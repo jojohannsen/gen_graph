@@ -91,6 +91,16 @@ instructions = {
     "The conditional function looks like this:": ["def should_call_tool(state: State) -> bool:", "  # your code here", "  return state['some_key'] == 'call_a_tool'"],
 }
 
+@rt("/toggle_syntax/{show}")
+def get(show:bool):
+    return Div(instructions, id="syntax", style="display: none;" if show else "display: block;")
+
+def mk_show_hide(show, thing):
+    return A(f"hide {thing}" if show else "show {thing}",
+        get=f"/toggle_{thing}/" + ("False" if show else "True"),
+        hx_target="#content{thing}", id="toggle_{thing}", hx_swap_oob="outerHTML",
+        cls='uk-button uk-button-primary')
+
 @rt("/")
 def get():
     return Div(Div(
@@ -98,7 +108,7 @@ def get():
             Form(hx_post='/convert', 
                 target_id="lg_gen", 
                 hx_trigger="change from:#example")(
-                Div(H6('LangGraph DSL', cls='col'),
+                Div(Div(H6('LangGraph DSL', style="margin-bottom: 0px;"), cls='col'),
                 Select(style="width: auto", id="example", cls='col')(
                     Option(BLANK_EXAMPLE, selected=True), 
                     Option("Agent Executor"),
