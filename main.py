@@ -39,14 +39,12 @@ for example in db.t.examples():
     examples[example['name']] = example['dsl']
 
 @rt("/convert")
-def post(dsl:str, example:str, lastval:str): 
+def post(dsl:str): 
     if dsl:
         print(f"DSL has content: {dsl[:50]}")
     else:
         print("DSL is blank")
-    print(example)
-    print(lastval)
-    return Pre(Code(gen_graph("graph", dsl))) if dsl else '', create_textarea(example, dsl)
+    return Pre(Code(gen_graph("graph", dsl))) if dsl else ''
 
 def create_textarea(selection, dsl):
     print(f"create_textarea: {selection}")
@@ -93,28 +91,24 @@ def InstantAgent():
 def get():
     return Div(
         InstantAgent(),
-        Div(
-            Div(Examples(), cls='left-column'),
+        Form(hx_post='/convert', target_id="lg_gen")(
             Div(
-                Form(hx_post='/convert', target_id="lg_gen")(
-                    Textarea(placeholder='DSL text goes here', id="dsl", rows=10),
-                ),
-                Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
-                cls='middle-column'
-            ),
-            Div(
+                Div(Examples(), cls='left-column'),
                 Div(
-                    Button('Generate Code', hx_post='/convert', target_id="lg_gen", style="display: inline-flex; align-items: center; justify-content: center; height:50px;"),
-                    H6('Python Code', style="display: inline-block; margin-left: 10px;"),
-                    cls='col'
+                    Textarea(placeholder='DSL text goes here', id="dsl", rows=15),
+                    Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
+                    cls='middle-column'
                 ),
-                Pre(id="lg_gen"),
-                Div(id="about_lg_gen"),
-                cls='right-column'
-            ),
-            cls='main-container'
-        ), 
+                Div(
+                    Button('Graph Builder Code', hx_post='/convert', target_id="lg_gen", style="display: inline-flex; align-items: center; justify-content: center; height: 30px; margin-top: 10px;"),
+                    Pre(id="lg_gen"),
+                    Div(id="about_lg_gen"),
+                    cls='right-column'
+                ),
+                cls='main-container'
+            ), 
         cls='page-container'
+        )
     )
 
 with open('README.md') as f: 
