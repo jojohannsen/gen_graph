@@ -94,23 +94,25 @@ def get():
     return Div(
         InstantAgent(),
         Div(
-            Examples(),
+            Div(Examples(), cls='left-column'),
             Div(
                 Form(hx_post='/convert', target_id="lg_gen")(
-                    Div(H6('LangGraph DSL', style="margin-bottom: 0px;")),
                     Textarea(placeholder='DSL text goes here', id="dsl", rows=10),
-                    Button('Generate Code', hx_post='/convert', target_id="lg_gen", style="display: inline-flex; align-items: center; justify-content: center; height:50px;")
                 ),
                 Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
-                cls='col'
+                cls='middle-column'
             ),
             Div(
-                Div(H6('Python Code'), cls='col'),
+                Div(
+                    Button('Generate Code', hx_post='/convert', target_id="lg_gen", style="display: inline-flex; align-items: center; justify-content: center; height:50px;"),
+                    H6('Python Code', style="display: inline-block; margin-left: 10px;"),
+                    cls='col'
+                ),
                 Pre(id="lg_gen"),
                 Div(id="about_lg_gen"),
-                cls='col'
+                cls='right-column'
             ),
-            cls='grid'
+            cls='main-container'
         ), 
         cls='page-container'
     )
@@ -124,7 +126,7 @@ def get():
 
 @rt("/select_example/{name}")
 def get(name:str):
-    return examples[name]
+    return examples[name].strip()
 
 
 serve()
