@@ -1,3 +1,5 @@
 .DS_Store
 .sesskey
 __pycache__
+data/gen_graph.db-shm
+data/gen_graph.db-wal

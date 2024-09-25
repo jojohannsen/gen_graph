@@ -1,11 +1,18 @@
 .page-container { 
     display: flex; 
     flex-direction: column; 
-    min-height: 100vh; 
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+.full-width {
+    width: 100%;
 }
 .main-container { 
     display: flex; 
-    flex: 1; 
+    flex: 1;
+    margin: 0;
+    padding: 0;
 }
 .left-column { 
     background-color: #f0f0f0; 
@@ -15,13 +22,13 @@
 }
 .middle-column {
     flex: 1;
-    padding: 0;
+    padding: 10px;
     display: flex;
     flex-direction: column;
 }
 .right-column {
-    flex: 1;
-    padding: 20px;
+    flex: 2;
+    padding: 10px;
 }
 .example-link { 
     display: block; 
@@ -63,20 +70,22 @@
     justify-content: space-between; 
     align-items: center;
     height: 50px;
+    margin: 0;
 }
-.header h2 { 
+.header h3 { 
     margin: 0; 
     font-family: cursive;
     font-style: italic;
     font-weight: 700;
-    font-size: 2.5em;
-    text-align: left;
+    font-size: 1.8em;
+    line-height: 50px; /* This ensures vertical centering */
 }
 .header a {
     font-size: 0.9em;
     text-decoration: none;
     color: #333;
     font-family: Arial, sans-serif;
+    align-self: center; /* This ensures the link is vertically centered */
 }
 .header a:hover {
     text-decoration: underline;
@@ -84,4 +93,35 @@
 #dsl {
     width: 100%;
     box-sizing: border-box;
+    margin: 0;
+    padding: 10px;
+}
+body {
+    margin: 0;
+    padding: 0;
+}
+.tab-container {
+    margin-bottom: 10px;
+}
+.tab {
+    background-color: #f1f1f1;
+    border: none;
+    color: black;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+.tab:hover {
+    background-color: #ddd;
+}
+.tab.active {
+    background-color: #ccc;
+}
+.tab-content {
+    display: none;
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+.tab-content.active {
+    display: block;
 }
