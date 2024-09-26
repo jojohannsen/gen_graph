@@ -1,6 +1,6 @@
 from fasthtml.common import *
 from fastlite import database
-from gen_graph import gen_graph
+from gen_graph import gen_graph, gen_nodes, gen_conditions, gen_state
 import uuid
 
 # Create the database
@@ -21,35 +21,6 @@ app, rt = fast_app(
         MarkdownJS(), 
         HighlightJS(),
         Link(rel="stylesheet", href="/static/styles.css"),
-        Script("""
-function toggleExamples() {
-    const header = document.querySelector('.expandable-header');
-    const content = document.querySelector('.expandable-content');
-    header.classList.toggle('expanded');
-    content.classList.toggle('expanded');
-}
-
-function openTab(evt, tabName) {
-    var i, tabContent, tabLinks;
-    tabContent = document.getElementsByClassName("tab-content");
-    for (i = 0; i < tabContent.length; i++) {
-        tabContent[i].style.display = "none";
-    }
-    tabLinks = document.getElementsByClassName("tab");
-    for (i = 0; i < tabLinks.length; i++) {
-        tabLinks[i].className = tabLinks[i].className.replace(" active", "");
-    }
-    document.getElementById(tabName).style.display = "block";
-    evt.currentTarget.className += " active";
-    
-    // Trigger HTMX request for the selected tab
-    if (tabName === 'nodes-tab') {
-        htmx.trigger('#nodes-tab', 'htmx:load');
-    } else if (tabName === 'conditions-tab') {
-        htmx.trigger('#conditions-tab', 'htmx:load');
-    }
-}
-        """)
     ]
 )
 BLANK_EXAMPLE = "examples..."
@@ -58,20 +29,6 @@ examples = {BLANK_EXAMPLE: ""}
 # Load examples from the database
 for example in db.t.examples():
     examples[example['name']] = example['dsl']
-
-@rt("/convert")
-def post(dsl:str): 
-    if dsl:
-        print(f"DSL has content: {dsl[:50]}")
-    else:
-        print("DSL is blank")
-    return Pre(Code(gen_graph("graph", dsl))) if dsl else ''
-
-def create_textarea(selection, dsl):
-    print(f"create_textarea: {selection}")
-    if selection != BLANK_EXAMPLE:
-        dsl = examples[selection]
-    return Textarea(dsl, placeholder='DSL text goes here', id="dsl", rows=10, hx_swap_oob='true'), Hidden(id="lastval", value=selection)
 
 instructions = {
     "First line must contain the State class and the first node": ["START(StateClassName) => first_node"],
@@ -84,19 +41,13 @@ instructions = {
 def get(show:bool):
     return Div(instructions, id="syntax", style="display: none;" if show else "display: block;")
 
-def mk_show_hide(show, thing):
-    return A(f"hide {thing}" if show else "show {thing}",
-        get=f"/toggle_{thing}/" + ("False" if show else "True"),
-        hx_target="#content{thing}", id="toggle_{thing}", hx_swap_oob="outerHTML",
-        cls='uk-button uk-button-primary')
 
 def Examples():
     return Div(
-        H6("Examples", cls="expandable-header", onclick="toggleExamples()"),
         Div(
             *[A(name, cls="example-link", hx_get=f"/select_example/{name}", hx_target="#dsl") 
               for name in examples.keys() if name != BLANK_EXAMPLE],
-            cls="expandable-content"
+              style="padding-top: 10px;"
         ),
         cls="column left-column"
     )
@@ -115,38 +66,78 @@ def TitleHeader():
         cls="header"
     )
 
+@rt("/get_state")
+def post(dsl: str):
+    print(f"GET_STATE: post")
+    if dsl:
+        print(f"DSL has content: {dsl[:50]}")
+    else:
+        print("DSL is blank")
+    return GeneratedCode(STATE_BUTTON, dsl)
+
+@rt("/get_graph")
+def post(dsl: str):
+    print(f"GET_GRAPH: post")
+    if dsl:
+        print(f"DSL has content: {dsl[:50]}")
+    else:
+        print("DSL is blank")
+    
+    return GeneratedCode(GRAPH_BUTTON, dsl)
+    
+
 @rt("/get_nodes")
-def get():
-    # Here you would typically process the current DSL to extract node information
-    # For now, we'll return a placeholder
-    nodes = ["Node 1", "Node 2", "Node 3"]  # This should be dynamically generated based on the DSL
-    return Ul(*[Li(node) for node in nodes])
+def post(dsl:str):
+    return GeneratedCode(NODES_BUTTON, dsl)
 
 @rt("/get_conditions")
-def get():
-    # Here you would typically process the current DSL to extract condition information
-    # For now, we'll return a placeholder
-    conditions = ["Condition 1", "Condition 2", "Condition 3"]  # This should be dynamically generated based on the DSL
-    return Ul(*[Li(condition) for condition in conditions])
+def post(dsl:str):
+    return GeneratedCode(CONDITIONS_BUTTON, dsl)
 
-def TabContent():
+STATE_BUTTON = 'State'
+GRAPH_BUTTON = 'Graph'
+NODES_BUTTON = 'Nodes'
+CONDITIONS_BUTTON = 'Conditions'
+
+def CodeGenerationButtons(active_button:str=None):
+    print(f"CodeGenerationButtons: active_button={active_button}")
     return Div(
-        Div(
-            Button('Graph', cls='tab active', onclick="openTab(event, 'graph-tab')"),
-            Button('Nodes', cls='tab', onclick="openTab(event, 'nodes-tab')"),
-            Button('Conditions', cls='tab', onclick="openTab(event, 'conditions-tab')"),
-            cls='tab-container'
-        ),
-        Div(
-            Div(
-                Pre(id="lg_gen"),
-                id='graph-tab',
-                cls='tab-content active'
-            ),
-            Div(id='nodes-tab', cls='tab-content', hx_get='/get_nodes', hx_trigger='htmx:load'),
-            Div(id='conditions-tab', cls='tab-content', hx_get='/get_conditions', hx_trigger='htmx:load'),
-        ),
-        cls='right-column'
+        Button(STATE_BUTTON, hx_post='/get_state', target_id='code-generation-content', hx_swap='innerHTML',
+            cls=f'code-generation-button{" active" if active_button == STATE_BUTTON else ""}'),
+        Button(GRAPH_BUTTON, hx_post='/get_graph', target_id='code-generation-content', hx_swap='innerHTML',
+            cls=f'code-generation-button{" active" if active_button == GRAPH_BUTTON else ""}'),
+        Button(NODES_BUTTON, hx_post='/get_nodes', target_id='code-generation-content', hx_swap='innerHTML',
+            cls=f'code-generation-button{" active" if active_button == NODES_BUTTON else ""}'),
+        Button(CONDITIONS_BUTTON, hx_post='/get_conditions', target_id='code-generation-content', hx_swap='innerHTML',
+            cls=f'code-generation-button{" active" if active_button == CONDITIONS_BUTTON else ""}'),
+        id='code-generation-buttons',
+        cls='toggle-buttons'
+    )
+
+def CodeGenerationContent(active_button:str=None, dsl:str=None):
+    print(f"CodeGenerationContent: active_button={active_button}")
+    state_pre = Pre(Code(gen_state(dsl)), id="state-code") if active_button == STATE_BUTTON else Pre(id="state-code")
+    state_div = Div(state_pre, cls=f'tab-content{" active" if active_button == STATE_BUTTON else ""}')
+    graph_pre = Pre(Code(gen_graph("graph", dsl)), id="graph-code") if active_button == GRAPH_BUTTON else Pre(id="graph-code")
+    graph_div = Div(graph_pre, cls=f'tab-content{" active" if active_button == GRAPH_BUTTON else ""}')
+    nodes_pre = Pre(Code(gen_nodes(dsl)), id="nodes-code") if active_button == NODES_BUTTON else Pre(id="nodes-code")
+    nodes_div = Div(nodes_pre, cls=f'tab-content{" active" if active_button == NODES_BUTTON else ""}')
+    conditions_pre = Pre(Code(gen_conditions(dsl)), id="conditions-code") if active_button == CONDITIONS_BUTTON else Pre(id="conditions-code")
+    conditions_div = Div(conditions_pre, cls=f'tab-content{" active" if active_button == CONDITIONS_BUTTON else ""}')
+    return Div(
+        state_div,
+        graph_div,
+        nodes_div,
+        conditions_div,
+        cls='toggle-buttons'
+    )
+
+def GeneratedCode(active_button:str=None, dsl:str=None):
+    return Div(
+        CodeGenerationButtons(active_button),
+        CodeGenerationContent(active_button, dsl),
+        cls='right-column',
+        id='code-generation-content',
     )
 
 @rt("/")
@@ -154,7 +145,7 @@ def get():
     return Main(
         TitleHeader(),
         Div(id="readme_content"),
-        Form(hx_post='/convert', target_id="lg_gen")(
+        Form()(
             Div(
                 Div(Examples(), cls='left-column'),
                 Div(
@@ -163,7 +154,7 @@ def get():
                         Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
                         cls='middle-column'
                     ),
-                    TabContent(),
+                    GeneratedCode(),
                     style="display: flex; flex: 1;"
                 ),
                 cls='main-container'
@@ -171,13 +162,13 @@ def get():
         cls='main-container'
         ), 
         cls='full-width'
-    )
+    ), Link(rel="stylesheet", href="/static/styles.css")
 
 with open('README.md') as f: 
     about_md = f.read()
 
 def make_form():
-    Form(hx_post='/convert', target_id="lg_gen")(
+    Form(hx_post='/get_graph', target_id="graph_gen")(
         Div(
             Div(Examples(), cls='left-column'),
             Div(
@@ -185,11 +176,7 @@ def make_form():
                 Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
                 cls='middle-column'
             ),
-            Div(
-                Button('Graph Builder Code', hx_post='/convert', target_id="lg_gen", style="display: inline-flex; align-items: center; justify-content: center; height: 30px; margin-top: 10px;"),
-                Pre(id="lg_gen"),
-                cls='right-column'
-            ),
+            GeneratedCode(GRAPH_BUTTON),
             cls='main-container'
         ), 
         cls='main-container'

@@ -44,25 +44,7 @@
 .example-link:not(.selected):hover { 
     background-color: #e0e0e0; 
 }
-.expandable-header { 
-    cursor: pointer; 
-    user-select: none;
-    margin-top: 0; 
-    margin-bottom: 0;
-    padding-top: 10px; 
-}
-.expandable-header::before { 
-    content: '▶ '; 
-}
-.expandable-header.expanded::before { 
-    content: '▼ '; 
-}
-.expandable-content { 
-    display: none; 
-}
-.expandable-content.expanded { 
-    display: block; 
-}
+
 .header { 
     background-color: #e0f2f1; 
     padding: 5px 10px; 
@@ -101,27 +83,56 @@ body {
     padding: 0;
 }
 .tab-container {
-    margin-bottom: 10px;
+    display: flex;
+    margin-bottom: -1px;
 }
 .tab {
-    background-color: #f1f1f1;
-    border: none;
-    color: black;
     padding: 10px 20px;
     cursor: pointer;
-    transition: 0.3s;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    margin-right: 5px;
+    position: relative;
+    z-index: 1;
+    transform: perspective(10px) rotateX(2deg);
+    transform-origin: bottom;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    transition: all 0.3s ease;
 }
 .tab:hover {
-    background-color: #ddd;
+    background-color: #e0e0e0;
 }
 .tab.active {
-    background-color: #ccc;
+    background-color: #fff;
+    border-bottom: 1px solid #fff;
+    z-index: 2;
+    transform: perspective(10px) rotateX(0deg);
 }
 .tab-content {
     display: none;
-    padding: 10px;
+    padding: 20px;
     border: 1px solid #ccc;
+    background-color: #fff;
 }
 .tab-content.active {
     display: block;
 }
+.code-generation-button.active {
+    background-color: #e0f2f1; /* Light teal color */
+    color: #000; /* Black text for contrast */
+    font-weight: bold;
+}
+
+/* Basic styling for the buttons */
+.toggle-buttons button {
+    background-color: #d3d3d3; /* Light gray background for unselected buttons */
+    border: 1px solid #a9a9a9; /* Darker gray border for unselected buttons */
+    color: var(--primary);
+    padding: 1rem;
+    margin-right: 0.5rem;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s, font-weight 0.3s, border-color 0.3s;
+}
+
