@@ -40,9 +40,10 @@
 .example-link.selected { 
     background-color: #ddd; 
     font-weight: bold; 
+    color: #006d77; /* Dark teal color */
 }
 .example-link:not(.selected):hover { 
-    background-color: #e0e0e0; 
+    background-color: #716363; 
 }
 
 .header { 
@@ -60,14 +61,14 @@
     font-style: italic;
     font-weight: 700;
     font-size: 1.8em;
-    line-height: 50px; /* This ensures vertical centering */
+    line-height: 50px;
 }
 .header a {
     font-size: 0.9em;
     text-decoration: none;
     color: #333;
     font-family: Arial, sans-serif;
-    align-self: center; /* This ensures the link is vertically centered */
+    align-self: center;
 }
 .header a:hover {
     text-decoration: underline;
@@ -82,34 +83,8 @@ body {
     margin: 0;
     padding: 0;
 }
-.tab-container {
-    display: flex;
-    margin-bottom: -1px;
-}
-.tab {
-    padding: 10px 20px;
-    cursor: pointer;
-    background-color: #f0f0f0;
-    border: 1px solid #ccc;
-    border-bottom: none;
-    margin-right: 5px;
-    position: relative;
-    z-index: 1;
-    transform: perspective(10px) rotateX(2deg);
-    transform-origin: bottom;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    transition: all 0.3s ease;
-}
-.tab:hover {
-    background-color: #e0e0e0;
-}
-.tab.active {
-    background-color: #fff;
-    border-bottom: 1px solid #fff;
-    z-index: 2;
-    transform: perspective(10px) rotateX(0deg);
-}
+
+
 .tab-content {
     display: none;
     padding: 20px;
@@ -120,19 +95,17 @@ body {
     display: block;
 }
 .code-generation-button.active {
-    background-color: #e0f2f1; /* Light teal color */
-    color: #000; /* Black text for contrast */
+    background-color: #e0f2f1;
+    color: #000;
     font-weight: bold;
 }
 
-/* Basic styling for the buttons */
 .toggle-buttons button {
-    background-color: #d3d3d3; /* Light gray background for unselected buttons */
-    border: 1px solid #a9a9a9; /* Darker gray border for unselected buttons */
-    color: var(--primary);
-    padding: 1rem;
+    background-color: lightgray;
+    border: 1px solid #a9a9a9;
+    color: black;
+    padding: 5px 10px;
     margin-right: 0.5rem;
     cursor: pointer;
     transition: background-color 0.3s, color 0.3s, font-weight 0.3s, border-color 0.3s;
 }
-

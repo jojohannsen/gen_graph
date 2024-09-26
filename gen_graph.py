@@ -204,7 +204,7 @@ def gen_nodes(graph_spec):
     graph, start_node = parse_graph_spec(graph_spec)
     print(graph)
     nodes = [gen_node(node_name) for node_name in graph if node_name != "START"]
-    return "\n\n".join(nodes)
+    return "\n".join(nodes)
 
 def find_conditions(node_dict):
     edges = node_dict["edges"]
@@ -228,11 +228,10 @@ def {condition}(state) -> bool:
 def gen_conditions(graph_spec):
     graph, start_node = parse_graph_spec(graph_spec)
     conditions = []
-    print(graph)
     for node_name, node_dict in graph.items():
         for condition in find_conditions(node_dict):
             conditions.append(gen_condition(condition))
-    return "\n\n".join(conditions)
+    return "\n".join(conditions) if conditions else "# This graph has no conditional edges"
 
 def mk_state(state_class):
     return f"""
@@ -251,7 +250,9 @@ def gen_state(graph_spec):
     return mk_state(graph[start_node]["state"])
 
 def gen_graph(graph_name, graph_spec, compile_args=None):
+    if not graph_spec: return ""
     graph, start_node = parse_graph_spec(graph_spec)
+    print(graph_name, graph_spec, start_node, graph)
     nodes_added = []
 
     # Generate the graph state, node definitions, and entry point
