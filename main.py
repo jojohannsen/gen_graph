@@ -3,6 +3,8 @@ from fastlite import database
 from gen_graph import gen_graph, gen_nodes, gen_conditions, gen_state
 import uuid
 import re
+from fastapi import FastAPI
+from crud import router as crud_router
 
 # Read the README.md file, and set up the database
 with open('README.md') as f: 
@@ -15,6 +17,9 @@ if 'examples' not in db.t:
 def before(session):
     if 'sid' not in session:
         session['sid'] = str(uuid.uuid4())
+
+app = FastAPI()
+app.include_router(crud_router)
 
 app, rt = fast_app(
     db_file='data/gen_graph.db',
@@ -216,7 +221,7 @@ def make_form(example_name:str):
             Div(Examples(example_name), cls='left-column'),
             Div(
                 Div(
-                    Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", rows=15, cls="code-editor"),
+                    Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", rows=25, cls="code-editor"),
                     Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
                     cls='middle-column'
                 ),
