@@ -16,7 +16,7 @@
 }
 .left-column { 
     background-color: #f0f0f0; 
-    width: 200px;
+    width: 300px;
     padding: 0;
     flex-shrink: 0;
 }
@@ -84,7 +84,6 @@ body {
     padding: 0;
 }
 
-
 .tab-content {
     display: none;
     padding: 20px;
@@ -108,4 +107,80 @@ body {
     margin-right: 0.5rem;
     cursor: pointer;
     transition: background-color 0.3s, color 0.3s, font-weight 0.3s, border-color 0.3s;
+}
+
+/* CodeMirror styles */
+.CodeMirror {
+    height: auto;
+    border: 1px solid #ccc;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.CodeMirror-scroll {
+    max-height: 300px;
+}
+
+.cm-s-default .cm-keyword {
+    color: #007bff;
+}
+
+.cm-s-default .cm-def {
+    color: #00a86b;
+}
+
+.cm-s-default .cm-variable {
+    color: #e83e8c;
+}
+
+.cm-s-default .cm-operator {
+    color: #6f42c1;
+}
+
+.cm-s-default .cm-number {
+    color: #fd7e14;
+}
+
+.cm-s-default .cm-string {
+    color: #28a745;
+}
+
+.cm-s-default .cm-comment {
+    color: #6c757d;
+    font-style: italic;
+}
+
+.cm-left-margin-bold-green {
+    color: #28a745;
+    font-weight: bold;
+}
+.cm-left-margin-bold-magenta {
+    color: #e83e8c;
+    font-weight: bold;
+}
+.cm-right-arrow-green {
+    color: #28a745;
+}
+
+.cm-text-blue {
+    color: #007bff;
+    font-weight: bold;
+}
+
+.cm-text-green {
+    color: #28a745;
+}
+.cm-text-orange {
+    color: #7d5509;
+}
+.cm-arrow-cyan {
+    color: #007bff;
+}
+.cm-pale-pink {
+    color: #ec9bc1;
+}
+.cm-magenta-bold {
+    color: #9b34af;
+    font-weight: bold;
 }

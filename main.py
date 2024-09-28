@@ -21,6 +21,8 @@ app, rt = fast_app(
         MarkdownJS(), 
         HighlightJS(),
         Link(rel="stylesheet", href="/static/styles.css"),
+        Link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css"),
+        Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
     ]
 )
 
@@ -62,27 +64,37 @@ def Examples(selected_example=None):
                 hx_get=f"/architecture/{name}", 
                 hx_target="#dsl",
                 hx_trigger="click, keyup[key=='Enter']",
-                hx_on="htmx:afterSettle: htmx.trigger('#dsl', 'input')",
-                hx_swap_oob="true")
+                hx_on="htmx:afterOnLoad: function() { if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); } }",
+              )
               for name in example_names],
               style="padding-top: 10px;"
         ),
+        Script("if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); }"),
         cls="column left-column",
         id="examples-list",
         hx_swap_oob="true"
     )
 
+def ViewReadme():
+    return A("View README", 
+         hx_get='/view_readme', 
+         hx_target="#readme_content",
+         hx_swap="outerHTML",
+         id="readme_link",
+         hx_swap_oob="true")
+
+def HideReadme():
+    return A("Hide README", 
+         hx_get='/hide_readme', 
+         hx_target="#readme_content",
+         hx_swap="outerHTML",
+         id="readme_link",
+         hx_swap_oob="true")
+
 def TitleHeader():
     return Grid(
         H1("Agent Architectures", style="font-family: cursive; margin-bottom: 0;"),
-        Div(
-            A("View README", 
-              hx_get='/toggle_readme', 
-              hx_target="#readme_content",
-              hx_swap="outerHTML",
-              id="readme_link"),
-            style="text-align: right;"
-        ),
+        ViewReadme(),
         cls="header"
     )
 
@@ -160,15 +172,23 @@ def GeneratedCode(active_button:str=None, dsl:str=None):
         id='code-generation-ui',
     )
 
+def TheWholeEnchilada(example_name:str):
+    return Div(
+        Div(id="readme_content"),
+        make_form(example_name), 
+        cls='full-width',
+        id='the-whole-enchilada',
+        hx_swap_oob='true'
+    )
+
 @rt("/")
 def get():
     first_example = next(iter(examples.keys()))
     return Main(
         TitleHeader(),
-        Div(id="readme_content"),
-        make_form(first_example), 
-        cls='full-width'
-    ), Link(rel="stylesheet", href="/static/styles.css")
+        TheWholeEnchilada(first_example),
+        cls='full-width',
+    )
 
 with open('README.md') as f: 
     about_md = f.read()
@@ -180,11 +200,14 @@ def make_form(example_name:str):
             Div(Examples(example_name), cls='left-column'),
             Div(
                 Div(
-                    Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", rows=15),
+                    Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", rows=15, cls="code-editor"),
                     Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
                     cls='middle-column'
                 ),
                 GeneratedCode(GRAPH_BUTTON, initial_dsl),
+                Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"),
+                Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
+                Script(src="/static/script.js"),
                 style="display: flex; flex: 1;"
             ),
             cls='main-container'
@@ -194,21 +217,13 @@ def make_form(example_name:str):
 
 @rt("/hide_readme")
 def get():
-    main_content = make_form(examples[0])
-    return Div(
-        main_content,
-        id="readme_content"
-    ), A("View README", 
-         hx_get='/toggle_readme', 
-         hx_target="#readme_content",
-         hx_swap="outerHTML",
-         id="readme_link",
-         hx_swap_oob="true")
+    return redirect("/")
 
-@rt("/toggle_readme")
+
+@rt("/view_readme")
 def get():
     return Div(
-        Div(about_md, cls='marked', style='text-align: left;'),
+        Div(about_md, cls='marked', style='padding: 20px; text-align: left;'),
         id="readme_content"
     ), A("Hide README", 
          hx_get='/hide_readme', 

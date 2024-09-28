@@ -6,6 +6,8 @@ def transform_graph_spec(graph_spec: str) -> str:
     transformed_lines = []
 
     for line in lines:
+        if not len(line) or line[0] in ["#", "-", "/"]:
+            continue
         if "=>" in line and not line[0].isspace():
             parts = line.split("=>")
             if parts[0].strip():
@@ -235,11 +237,6 @@ def gen_conditions(graph_spec):
 
 def mk_state(state_class):
     return f"""
-def add_state(a, b):
-    if not a: a = []
-    a.append(b)
-    return a
-
 class {state_class}(TypedDict):
     states: Annotated[list[str], add_state]
     last_state: str
