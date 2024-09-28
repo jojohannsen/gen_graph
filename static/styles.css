@@ -79,6 +79,7 @@
     margin: 0;
     padding: 10px;
 }
+
 body {
     margin: 0;
     padding: 0;
@@ -93,6 +94,7 @@ body {
 .tab-content.active {
     display: block;
 }
+
 .code-generation-button.active {
     background-color: #e0f2f1;
     color: #000;
@@ -111,7 +113,7 @@ body {
 
 /* CodeMirror styles */
 .CodeMirror {
-    height: auto;
+    height: 600px; /* Increase this value to make the editor taller */
     border: 1px solid #ccc;
     font-family: monospace;
     font-size: 14px;
@@ -119,7 +121,11 @@ body {
 }
 
 .CodeMirror-scroll {
-    max-height: 300px;
+    max-height: 600px; /* Adjust this to match the height of CodeMirror */
+}
+
+.cm-s-default {
+    height: 600px;
 }
 
 .cm-s-default .cm-keyword {
@@ -193,4 +199,45 @@ body {
 #readme_content:empty {
     max-height: 0;
     padding: 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+input[type="text"], textarea {
+    width: 100%;
+    padding: 8px;
+}
+
+input[type="submit"] {
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px;
+    border: none;
+    cursor: pointer;
+}
+
+input[type="submit"]:hover {
+    background-color: #45a049;
+}
+
+.error {
+    color: red;
+    font-weight: bold;
 }

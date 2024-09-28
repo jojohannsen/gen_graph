@@ -12,12 +12,16 @@ CodeMirror.defineSimpleMode("myDSL", {
     ]
 });
 
+
 console.log("Creating editor from text area");
 let editor = CodeMirror.fromTextArea(document.getElementById('dsl'), {
     mode: "myDSL",
     lineNumbers: true,
-    theme: "default"
+    theme: "default",
+    viewportMargin: Infinity // This allows the editor to expand to its container's height
 });
+
+// Remove the setEditorHeight function and the resize event listener
 
 function update_editor() {
     console.log("update_editor");
@@ -27,7 +31,10 @@ function update_editor() {
     console.log(newContent);
     // Update the existing editor's content
     editor.setValue(newContent);
-
+    editor.setSize(null, "600px"); 
     // Refresh the editor to ensure proper rendering
     editor.refresh();
 }
+
+// Call update_editor once when the page loads
+//document.addEventListener('DOMContentLoaded', update_editor);

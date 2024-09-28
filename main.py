@@ -3,23 +3,21 @@ from fastlite import database
 from gen_graph import gen_graph, gen_nodes, gen_conditions, gen_state
 import uuid
 import re
-from fastapi import FastAPI
-from crud import router as crud_router
+from fastapi import FastAPI, Request, HTTPException
 
 # Read the README.md file, and set up the database
 with open('README.md') as f: 
     about_md = f.read()
 
 db = database('data/gen_graph.db')
-if 'examples' not in db.t:
-    db.t.examples.create(id=str, name=str, dsl=str, pk='id')
+if 'architectures' not in db.t:
+    db.t.architectures.create(id=str, name=str, dsl=str, pk='id')
 
 def before(session):
     if 'sid' not in session:
         session['sid'] = str(uuid.uuid4())
 
 app = FastAPI()
-app.include_router(crud_router)
 
 app, rt = fast_app(
     db_file='data/gen_graph.db',
@@ -34,11 +32,12 @@ app, rt = fast_app(
     before=before  
 )
 
-examples = {}
+# Function to load all architectures from the database
+def load_architectures():
+    return {row['id']: row for row in db.t.architectures()}
 
-# Load examples from the database
-for example in db.t.examples():
-    examples[example['name']] = example['dsl']
+# Load architectures from the database
+architectures = load_architectures()
 
 instructions = {
     "First line must contain the State class and the first node": ["START(StateClassName) => first_node"],
@@ -59,22 +58,21 @@ def remove_non_alphanumeric(input_string):
     return re.sub(r'[^a-zA-Z0-9]', '', input_string)
 
 def Examples(selected_example=None):
-    example_names = list(examples.keys())
     if selected_example is None:
-        selected_example = next(name for name in example_names)
+        selected_example = next(iter(architectures.keys()))
     print(f"Examples: selected_example={selected_example}")
-    print(f"Examples: example_names={example_names}")
+    print(f"Examples: architectures={architectures.keys()}")
     return Div(
         Div(
-            *[A(name, 
-                id=f"example-link-{remove_non_alphanumeric(name)}",
-                cls=f"example-link{' selected' if name == selected_example else ''}", 
-                hx_get=f"/architecture/{name}", 
+            *[A(arch['name'], 
+                id=f"example-link-{remove_non_alphanumeric(arch['name'])}",
+                cls=f"example-link{' selected' if arch['id'] == selected_example else ''}", 
+                hx_get=f"/architecture/{arch['id']}", 
                 hx_target="#dsl",
                 hx_trigger="click, keyup[key=='Enter']",
                 hx_on="htmx:afterOnLoad: function() { if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); } }",
               )
-              for name in example_names],
+              for arch in architectures.values()],
               style="padding-top: 10px;"
         ),
         Script("if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); }"),
@@ -108,7 +106,10 @@ def get(request: Request):
 def TitleHeader():
     return Div(
         Grid(
-            H1("Agent Architectures", style="font-family: cursive; margin-bottom: 0;"),
+            Div(
+                H1("LangGraph Architectures", style="font-family: cursive; margin-bottom: 0; display: inline;"),
+                style="display: flex; align-items: center;"
+            ),
             A("View README", 
               hx_get='/toggle_readme', 
               hx_target="#readme_content",
@@ -123,23 +124,11 @@ def TitleHeader():
 
 @rt("/get_state")
 def post(dsl: str):
-    print(f"GET_STATE: post")
-    if dsl:
-        print(f"DSL has content: {dsl[:50]}")
-    else:
-        print("DSL is blank")
     return GeneratedCode(STATE_BUTTON, dsl)
 
 @rt("/get_graph")
 def post(dsl: str):
-    print(f"GET_GRAPH: post")
-    if dsl:
-        print(f"DSL has content: {dsl[:50]}")
-    else:
-        print("DSL is blank")
-    
     return GeneratedCode(GRAPH_BUTTON, dsl)
-    
 
 @rt("/get_nodes")
 def post(dsl:str):
@@ -155,7 +144,6 @@ NODES_BUTTON = 'Nodes'
 CONDITIONS_BUTTON = 'Conditions'
 
 def CodeGenerationButtons(active_button:str=None):
-    print(f"CodeGenerationButtons: active_button={active_button}")
     return Div(
         Button(STATE_BUTTON, hx_post='/get_state', target_id='code-generation-ui', hx_swap='outerHTML',
             cls=f'code-generation-button{" active" if active_button == STATE_BUTTON else ""}'),
@@ -170,7 +158,6 @@ def CodeGenerationButtons(active_button:str=None):
     )
 
 def CodeGenerationContent(active_button:str=None, dsl:str=None):
-    print(f"CodeGenerationContent: active_button={active_button}")
     state_pre = Pre(Code(gen_state(dsl).strip()), id="state-code") if active_button == STATE_BUTTON else Pre(id="state-code")
     state_div = Div(state_pre, cls=f'tab-content{" active" if active_button == STATE_BUTTON else ""}')
     graph_pre = Pre(Code(gen_graph("graph", dsl).strip()), id="graph-code") if active_button == GRAPH_BUTTON else Pre(id="graph-code")
@@ -195,10 +182,10 @@ def GeneratedCode(active_button:str=None, dsl:str=None):
         id='code-generation-ui',
     )
 
-def TheWholeEnchilada(example_name:str):
+def TheWholeEnchilada(architecture_id:str):
     return Div(
         Div(id="readme_content"),
-        make_form(example_name), 
+        make_form(architecture_id), 
         cls='full-width',
         id='the-whole-enchilada',
         hx_swap_oob='true'
@@ -206,23 +193,25 @@ def TheWholeEnchilada(example_name:str):
 
 @rt("/")
 def get():
-    first_example = next(iter(examples.keys()))
+    first_architecture_id = next(iter(architectures.keys()))
     return Main(
         TitleHeader(),
-        TheWholeEnchilada(first_example),
+        Div(
+            TheWholeEnchilada(first_architecture_id),
+            id="main_content"
+        ),
         cls='full-width',
     )
 
-
-def make_form(example_name:str):
-    initial_dsl = examples[example_name]
+def make_form(example_id:str):
+    initial_dsl = architectures[example_id]['graph_spec']
     return Form()(
         Div(
-            Div(Examples(example_name), cls='left-column'),
+            Div(Examples(example_id), cls='left-column'),
             Div(
                 Div(
                     Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", rows=25, cls="code-editor"),
-                    Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
+                    #Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
                     cls='middle-column'
                 ),
                 GeneratedCode(GRAPH_BUTTON, initial_dsl),
@@ -240,7 +229,6 @@ def make_form(example_name:str):
 def get():
     return redirect("/")
 
-
 @rt("/view_readme")
 def get():
     return Div(
@@ -253,8 +241,11 @@ def get():
          id="readme_link",
          hx_swap_oob="true")
 
-@rt("/architecture/{name}")
-def get(name:str):
-    return examples[name].strip(), Examples(name)
+@rt("/architecture/{arch_id}")
+def get(arch_id:int):
+    arch = architectures.get(arch_id)
+    if arch is None:
+        raise HTTPException(status_code=404, detail="Architecture not found")
+    return arch['graph_spec'].strip(), Examples(arch_id)
 
 serve()
