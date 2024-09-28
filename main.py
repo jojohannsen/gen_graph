@@ -3,10 +3,12 @@ from fastlite import database
 from gen_graph import gen_graph, gen_nodes, gen_conditions, gen_state
 import uuid
 import re
-# Create the database
-db = database('data/gen_graph.db')
 
-# Create tables if they don't exist
+# Read the README.md file, and set up the database
+with open('README.md') as f: 
+    about_md = f.read()
+
+db = database('data/gen_graph.db')
 if 'examples' not in db.t:
     db.t.examples.create(id=str, name=str, dsl=str, pk='id')
 
@@ -23,7 +25,8 @@ app, rt = fast_app(
         Link(rel="stylesheet", href="/static/styles.css"),
         Link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css"),
         Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
-    ]
+    ],
+    before=before  
 )
 
 examples = {}
@@ -75,27 +78,42 @@ def Examples(selected_example=None):
         hx_swap_oob="true"
     )
 
-def ViewReadme():
-    return A("View README", 
-         hx_get='/view_readme', 
-         hx_target="#readme_content",
-         hx_swap="outerHTML",
-         id="readme_link",
-         hx_swap_oob="true")
-
-def HideReadme():
-    return A("Hide README", 
-         hx_get='/hide_readme', 
-         hx_target="#readme_content",
-         hx_swap="outerHTML",
-         id="readme_link",
-         hx_swap_oob="true")
+@rt("/toggle_readme")
+def get(request: Request):
+    is_visible = 'true' in request.query_params.get('visible', 'false')
+    
+    if is_visible:
+        return A("View README", 
+                 hx_get='/toggle_readme?visible=false', 
+                 hx_target="#readme_content",
+                 hx_swap="innerHTML",
+                 hx_swap_oob="true", 
+                 id="readme_toggle")
+    else:
+        return Div(
+            Div(about_md, cls='marked', style='padding: 20px; text-align: left;'),
+            A("Hide README", 
+              hx_get='/toggle_readme?visible=true', 
+              hx_target="#readme_content",
+              hx_swap="innerHTML",
+              hx_swap_oob="true", 
+              id="readme_toggle")
+        )
 
 def TitleHeader():
-    return Grid(
-        H1("Agent Architectures", style="font-family: cursive; margin-bottom: 0;"),
-        ViewReadme(),
-        cls="header"
+    return Div(
+        Grid(
+            H1("Agent Architectures", style="font-family: cursive; margin-bottom: 0;"),
+            A("View README", 
+              hx_get='/toggle_readme', 
+              hx_target="#readme_content",
+              hx_swap="innerHTML",
+              id="readme_toggle",
+              hx_swap_oob="true"),
+            cls="header"
+        ),
+        Div(id="readme_content"),
+        cls="header-container"
     )
 
 @rt("/get_state")
@@ -190,8 +208,6 @@ def get():
         cls='full-width',
     )
 
-with open('README.md') as f: 
-    about_md = f.read()
 
 def make_form(example_name:str):
     initial_dsl = examples[example_name]
