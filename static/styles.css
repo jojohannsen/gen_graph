@@ -29,7 +29,7 @@
 .right-column {
     flex: 2;
     padding: 10px;
-    min-width: 500px;
+    min-width: 600px;
 }
 .example-link { 
     display: block; 

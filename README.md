@@ -1,5 +1,33 @@
 
-This is a tool for generating langgraph builder code from a DSL.  
+#### Building Langraph Architectures
+
+LCE, LangGraph, and LangSmith are a powerful combination for building agents.  
+But the huge amount of flexibility they allow can make it hard to get started.
+
+This is a tool for building agents that limits that flexibility to make it easier to create an agent.  The examples are taken from langgraph jupyter notebooks, just replacing the graph builder code with the DSL, leaving most of the remaining code unchanged.  
+
+###### How to create an agent
+
+1. Choose an initial langgraph architecture (left column)
+2. Modify the architecture for your specific task (middle column)
+3. Write a few functions to make the architecture functional (right column) -- currently only shows generated read-only functions.
+
+###### Why?
+
+The goal here is to minimize the conceptual overhead for building an agent, to be able to try out
+more agents more quickly. 
+
+Without getting too philosophical, for me, it makes
+much more sense to think of humans and agents as tightly coupled and interchangeable.  So if creating agents 
+this way helps me try out more ideas more quickly, it will also help the agent that helps me with that.
+
+Agents that help with building evaluations and regression testing will have an easier time as well if their
+options are limited to a few well defined building blocks.
+
+###### Graph Specification DSL
+
+The DSL translates directly into langgraph builder code.
+You see the DSL in the middle column, the 'Graph' tab in the right column shows the python code for the graph.
 
 It's not that hard to just write the builder code, 
 but there's two reasons you might find it useful:
@@ -68,6 +96,7 @@ This plus the 5 node functions, and the 1 conditional edge function, is the enti
 The generated code (below) is not that complicated, but I can't see the graph and I can't make sense of what 'add_conditional_edges' is doing.
 
 ```python
+# BEGIN GENERATED CODE
 model_compare = StateGraph(ModelCompare)
 model_compare.add_node('call_model', call_model)
 model_compare.add_node('call_openai_model', call_openai_model)
@@ -87,12 +116,14 @@ def after_handle_human_request(state: ModelCompare):
 handle_human_request_dict = {'END': END, 'call_model': 'call_model'}
 model_compare.add_conditional_edges('handle_human_request', after_handle_human_request, handle_human_request_dict)
 
-
 model_compare = model_compare.compile()
+# END GENERATED CODE
 ```
 
 #### Limitations
 
 - No syntax checking, mistakes show up when executing generated code
 - UI doesn't show any errors
-- This isn't a product, it's something I've been experimenting with, also trying out [FastHTML](https://about.fastht.ml/).
+- This is experimental, built with [FastHTML](https://about.fastht.m/)
+- A lot is not implemented, for now just collecting architectures to include
+

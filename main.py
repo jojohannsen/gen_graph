@@ -60,8 +60,6 @@ def remove_non_alphanumeric(input_string):
 def Examples(selected_example=None):
     if selected_example is None:
         selected_example = next(iter(architectures.keys()))
-    print(f"Examples: selected_example={selected_example}")
-    print(f"Examples: architectures={architectures.keys()}")
     return Div(
         Hidden(selected_example, id="architecture_id", hx_swap="outerHTML"),
         Div(
