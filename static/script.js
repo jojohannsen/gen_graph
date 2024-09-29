@@ -25,16 +25,15 @@ let editor = CodeMirror.fromTextArea(document.getElementById('dsl'), {
 // Remove the setEditorHeight function and the resize event listener
 
 function update_editor() {
-    console.log("update_editor");
     // Get the new content from the textarea
     const newContent = document.getElementById('dsl').value;
-    console.log("WE GOT NEW CONTENT");
-    console.log(newContent);
     // Update the existing editor's content
     editor.setValue(newContent);
     editor.setSize(null, "600px"); 
     // Refresh the editor to ensure proper rendering
     editor.refresh();
+    
+    document.getElementById('readme_button').click();
 }
 
 // Call update_editor once when the page loads

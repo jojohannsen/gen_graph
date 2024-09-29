@@ -85,7 +85,7 @@ def get(request: Request):
     is_visible = 'true' in request.query_params.get('visible', 'false')
     
     if is_visible:
-        return A("View README", 
+        return A("View Project README", 
                  hx_get='/toggle_readme?visible=false', 
                  hx_target="#readme_content",
                  hx_swap="innerHTML",
@@ -94,7 +94,7 @@ def get(request: Request):
     else:
         return Div(
             Div(about_md, cls='marked', style='padding: 20px; text-align: left;'),
-            A("Hide README", 
+            A("Hide Project README", 
               hx_get='/toggle_readme?visible=true', 
               hx_target="#readme_content",
               hx_swap="innerHTML",
@@ -149,7 +149,7 @@ CONDITIONS_BUTTON = 'Conditions'
 
 def CodeGenerationButtons(active_button:str=None, architecture_id:str=None):
     return Div(  
-        Button(README_BUTTON, hx_post=f'/get_readme', target_id='code-generation-ui', hx_swap='outerHTML',
+        Button(README_BUTTON, id="readme_button", hx_post=f'/get_readme', target_id='code-generation-ui', hx_swap='outerHTML',
             cls=f'code-generation-button{" active" if active_button == README_BUTTON else ""}'),        
         Button(STATE_BUTTON, hx_post='/get_state', target_id='code-generation-ui', hx_swap='outerHTML',
             cls=f'code-generation-button{" active" if active_button == STATE_BUTTON else ""}'),
@@ -238,7 +238,7 @@ def make_form(example_id:str):
                     #Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
                     cls='middle-column'
                 ),
-                GeneratedCode(GRAPH_BUTTON, initial_dsl, example_id),
+                GeneratedCode(README_BUTTON, initial_dsl, example_id),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
                 Script(src="/static/script.js"),

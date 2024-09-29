@@ -10,7 +10,7 @@ This is a tool for building agents that limits that flexibility to make it easie
 
 1. Choose an initial langgraph architecture (left column)
 2. Modify the architecture for your specific task (middle column)
-3. Write a few functions to make the architecture functional (right column) -- currently only shows generated read-only functions.
+3. Modify the generated functions to make the architecture functional (right column) -- these are currently read-only.
 
 ###### Why?
 
