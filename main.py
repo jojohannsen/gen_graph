@@ -3,7 +3,6 @@ from fastlite import database
 from gen_graph import gen_graph, gen_nodes, gen_conditions, gen_state
 import uuid
 import re
-from fastapi import FastAPI, Request, HTTPException
 
 # Read the README.md file, and set up the database
 with open('README.md') as f: 
@@ -16,8 +15,6 @@ if 'architectures' not in db.t:
 def before(session):
     if 'sid' not in session:
         session['sid'] = str(uuid.uuid4())
-
-app = FastAPI()
 
 app, rt = fast_app(
     db_file='data/gen_graph.db',
