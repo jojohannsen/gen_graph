@@ -52,7 +52,7 @@ def get(show:bool):
 
 @rt("/examples/{selected_example}")
 def get(selected_example: str):
-    return Examples(selected_example)
+    return Examples(selected_example), Hidden(selected_example, id="architecture_id", hx_swap="outerHTML")
 
 def remove_non_alphanumeric(input_string):
     return re.sub(r'[^a-zA-Z0-9]', '', input_string)
@@ -63,6 +63,7 @@ def Examples(selected_example=None):
     print(f"Examples: selected_example={selected_example}")
     print(f"Examples: architectures={architectures.keys()}")
     return Div(
+        Hidden(selected_example, id="architecture_id", hx_swap="outerHTML"),
         Div(
             *[A(arch['name'], 
                 id=f"example-link-{remove_non_alphanumeric(arch['name'])}",
@@ -122,29 +123,36 @@ def TitleHeader():
         cls="header-container"
     )
 
+@rt("/get_readme")
+def post(dsl: str, architecture_id:str):
+    return GeneratedCode(README_BUTTON, dsl, architecture_id)
+
 @rt("/get_state")
-def post(dsl: str):
-    return GeneratedCode(STATE_BUTTON, dsl)
+def post(dsl: str, architecture_id:str):
+    return GeneratedCode(STATE_BUTTON, dsl, architecture_id)
 
 @rt("/get_graph")
-def post(dsl: str):
-    return GeneratedCode(GRAPH_BUTTON, dsl)
+def post(dsl: str, architecture_id:str):
+    return GeneratedCode(GRAPH_BUTTON, dsl, architecture_id)
 
 @rt("/get_nodes")
-def post(dsl:str):
-    return GeneratedCode(NODES_BUTTON, dsl)
+def post(dsl:str, architecture_id:str):
+    return GeneratedCode(NODES_BUTTON, dsl, architecture_id)
 
 @rt("/get_conditions")
-def post(dsl:str):
-    return GeneratedCode(CONDITIONS_BUTTON, dsl)
+def post(dsl:str, architecture_id:str):
+    return GeneratedCode(CONDITIONS_BUTTON, dsl, architecture_id)
 
+README_BUTTON = 'README'
 STATE_BUTTON = 'State'
 GRAPH_BUTTON = 'Graph'
 NODES_BUTTON = 'Nodes'
 CONDITIONS_BUTTON = 'Conditions'
 
-def CodeGenerationButtons(active_button:str=None):
-    return Div(
+def CodeGenerationButtons(active_button:str=None, architecture_id:str=None):
+    return Div(  
+        Button(README_BUTTON, hx_post=f'/get_readme', target_id='code-generation-ui', hx_swap='outerHTML',
+            cls=f'code-generation-button{" active" if active_button == README_BUTTON else ""}'),        
         Button(STATE_BUTTON, hx_post='/get_state', target_id='code-generation-ui', hx_swap='outerHTML',
             cls=f'code-generation-button{" active" if active_button == STATE_BUTTON else ""}'),
         Button(GRAPH_BUTTON, hx_post='/get_graph', target_id='code-generation-ui', hx_swap='outerHTML',
@@ -157,7 +165,23 @@ def CodeGenerationButtons(active_button:str=None):
         cls='toggle-buttons'
     )
 
-def CodeGenerationContent(active_button:str=None, dsl:str=None):
+def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:str=None):
+    if active_button == README_BUTTON:
+        # Find the architecture by ID
+        print(f"CodeGenerationContent: architecture_id={architecture_id}, type={type(architecture_id)}")
+        print(f"CodeGenerationContent: architectures={architectures.keys()}")
+        for key in architectures.keys():
+            print(f"CodeGenerationContent: key={key}, type={type(key)}")
+        arch = architectures[int(architecture_id)]
+        if arch:
+            arch_md = arch['readme']
+        else:
+            arch_md = "README not available for this architecture."
+        arch_div = Div(arch_md, cls='marked', style='padding: 20px; text-align: left;'),
+    else:
+        arch_div = ''
+    
+    arch_readme_div = Div(arch_div, id="architecture-readme", cls=f'tab-content{" active" if active_button == README_BUTTON else ""}')
     state_pre = Pre(Code(gen_state(dsl).strip()), id="state-code") if active_button == STATE_BUTTON else Pre(id="state-code")
     state_div = Div(state_pre, cls=f'tab-content{" active" if active_button == STATE_BUTTON else ""}')
     graph_pre = Pre(Code(gen_graph("graph", dsl).strip()), id="graph-code") if active_button == GRAPH_BUTTON else Pre(id="graph-code")
@@ -167,6 +191,7 @@ def CodeGenerationContent(active_button:str=None, dsl:str=None):
     conditions_pre = Pre(Code(gen_conditions(dsl).strip()), id="conditions-code") if active_button == CONDITIONS_BUTTON else Pre(id="conditions-code")
     conditions_div = Div(conditions_pre, cls=f'tab-content{" active" if active_button == CONDITIONS_BUTTON else ""}')
     return Div(
+        arch_readme_div,
         state_div,
         graph_div,
         nodes_div,
@@ -174,10 +199,10 @@ def CodeGenerationContent(active_button:str=None, dsl:str=None):
         cls='toggle-buttons'
     )
 
-def GeneratedCode(active_button:str=None, dsl:str=None):
+def GeneratedCode(active_button:str=None, dsl:str=None, architecture_id:str=None):
     return Div(
-        CodeGenerationButtons(active_button),
-        CodeGenerationContent(active_button, dsl),
+        CodeGenerationButtons(active_button, architecture_id),
+        CodeGenerationContent(active_button, dsl, architecture_id),
         cls='right-column',
         id='code-generation-ui',
     )
@@ -204,6 +229,7 @@ def get():
     )
 
 def make_form(example_id:str):
+    print(f"make_form: example_id={example_id}")
     initial_dsl = architectures[example_id]['graph_spec']
     return Form()(
         Div(
@@ -214,7 +240,7 @@ def make_form(example_id:str):
                     #Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
                     cls='middle-column'
                 ),
-                GeneratedCode(GRAPH_BUTTON, initial_dsl),
+                GeneratedCode(GRAPH_BUTTON, initial_dsl, example_id),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
                 Script(src="/static/script.js"),

@@ -1,5 +1,6 @@
 CodeMirror.defineSimpleMode("myDSL", {
     start: [
+        { regex: /#.*/, token: "comment", sol: true },
         // Match lines starting with non-whitespace, text on the left margin is bold and green
         { regex: /(START)(\(.*\))(\s*=>\s*)([^\s]*)/, token: ["pale-pink", "magenta-bold", "arrow-cyan", "text-green"]},
         { regex: /^[^\s]+/, token: "left-margin-bold-green", sol: true },

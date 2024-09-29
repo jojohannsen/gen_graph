@@ -29,6 +29,7 @@
 .right-column {
     flex: 2;
     padding: 10px;
+    min-width: 500px;
 }
 .example-link { 
     display: block; 
@@ -100,6 +101,7 @@ body {
     color: #000;
     font-weight: bold;
 }
+
 
 .toggle-buttons button {
     background-color: lightgray;
