@@ -233,7 +233,7 @@ def gen_conditions(graph_spec):
     for node_name, node_dict in graph.items():
         for condition in find_conditions(node_dict):
             conditions.append(gen_condition(condition))
-    result = "# GENERATED CODE -- useful only for simulation mode\n"
+    result = "# GENERATED CODE -- useful only for simulation mode"
     return result + "\n".join(conditions) if conditions else "# This graph has no conditional edges"
 
 def mk_state(state_class):

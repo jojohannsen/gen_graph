@@ -31,7 +31,8 @@ app, rt = fast_app(
 
 # Function to load all architectures from the database
 def load_architectures():
-    return {row['id']: row for row in db.t.architectures()}
+    architectures = {row['id']: row for row in db.t.architectures()}
+    return dict(sorted(architectures.items(), key=lambda item: item[1]['name'].lower()))
 
 # Load architectures from the database
 architectures = load_architectures()
