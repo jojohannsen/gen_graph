@@ -156,8 +156,15 @@ def CodeGenerationButtons(active_button:str=None, architecture_id:str=None):
             cls=f'code-generation-button{" active" if active_button == NODES_BUTTON else ""}'),
         Button(CONDITIONS_BUTTON, hx_post='/get_conditions', target_id='code-generation-ui', hx_swap='outerHTML',
             cls=f'code-generation-button{" active" if active_button == CONDITIONS_BUTTON else ""}'),
+        Span(style="flex-grow: 1;"),  # This will push the checkbox to the right
+        Label(
+            Input(type="checkbox", name="simulation_code", id="simulation_code_checkbox"),
+            Span("Simulation Code", style="font-size: 0.8em; font-style: italic; color: #999;"),
+            style="display: flex; align-items: center;"
+        ),
         id='code-generation-buttons',
-        cls='toggle-buttons'
+        cls='toggle-buttons',
+        style="display: flex; justify-content: space-between; align-items: center;"
     )
 
 def mk_name(name:str):

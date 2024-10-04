@@ -223,7 +223,6 @@ def random_one_or_zero():
 
 def gen_condition(condition):
     return f"""
-# GENERATED CODE -- useful only for simulation mode
 def {condition}(state) -> bool:
     return random_one_or_zero()
 """
@@ -234,7 +233,8 @@ def gen_conditions(graph_spec):
     for node_name, node_dict in graph.items():
         for condition in find_conditions(node_dict):
             conditions.append(gen_condition(condition))
-    return "\n".join(conditions) if conditions else "# This graph has no conditional edges"
+    result = "# GENERATED CODE -- useful only for simulation mode\n"
+    return result + "\n".join(conditions) if conditions else "# This graph has no conditional edges"
 
 def mk_state(state_class):
     return f"""
@@ -255,9 +255,9 @@ def gen_graph(graph_name, graph_spec, compile_args=None):
     nodes_added = []
 
     # Generate the graph state, node definitions, and entry point
-    graph_setup = "# GENERATED CODE -- working langgraph code\n"
-    graph_setup += f"# Node and Condition functions, and Graph State definition are needed,\n"
-    graph_setup += f"# values shown here are simulated, but show correct signature\n"
+    graph_setup = "# GENERATED CODE -- working langgraph code, tested with simulation code.\n"
+    graph_setup += f"# Node and Condition functions, and Graph State definition are needed.\n"
+
     graph_setup += f"{graph_name} = StateGraph({graph[start_node]['state']})\n"
     if graph[start_node]["state"] == "MessageGraph":
         graph_setup = f"{graph_name} = MessageGraph()\n"
