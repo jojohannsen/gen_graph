@@ -119,24 +119,24 @@ def TitleHeader():
     )
 
 @rt("/get_readme")
-def post(dsl: str, architecture_id:str):
-    return GeneratedCode(README_BUTTON, dsl, architecture_id)
+def post(dsl: str, architecture_id:str, simulation_code: str = "false"):
+    return GeneratedCode(README_BUTTON, dsl, architecture_id, simulation_code == "on")
 
 @rt("/get_state")
-def post(dsl: str, architecture_id:str):
-    return GeneratedCode(STATE_BUTTON, dsl, architecture_id)
+def post(dsl: str, architecture_id: str, simulation_code: str = "false"):
+    return GeneratedCode(STATE_BUTTON, dsl, architecture_id, simulation_code == "on")
 
 @rt("/get_graph")
-def post(dsl: str, architecture_id:str):
-    return GeneratedCode(GRAPH_BUTTON, dsl, architecture_id)
+def post(dsl: str, architecture_id:str, simulation_code: str = "false"):
+    return GeneratedCode(GRAPH_BUTTON, dsl, architecture_id, simulation_code == "on")
 
 @rt("/get_nodes")
-def post(dsl:str, architecture_id:str):
-    return GeneratedCode(NODES_BUTTON, dsl, architecture_id)
+def post(dsl:str, architecture_id:str, simulation_code: str = "false"):
+    return GeneratedCode(NODES_BUTTON, dsl, architecture_id, simulation_code == "on")
 
 @rt("/get_conditions")
-def post(dsl:str, architecture_id:str):
-    return GeneratedCode(CONDITIONS_BUTTON, dsl, architecture_id)
+def post(dsl:str, architecture_id:str, simulation_code: str = "false"):
+    return GeneratedCode(CONDITIONS_BUTTON, dsl, architecture_id, simulation_code == "on")
 
 README_BUTTON = 'README'
 STATE_BUTTON = 'State'
@@ -144,7 +144,7 @@ GRAPH_BUTTON = 'Graph'
 NODES_BUTTON = 'Nodes'
 CONDITIONS_BUTTON = 'Conditions'
 
-def CodeGenerationButtons(active_button:str=None, architecture_id:str=None):
+def CodeGenerationButtons(active_button:str=None, architecture_id:str=None, simulation_code:bool=False):
     return Div(  
         Button(README_BUTTON, id="readme_button", hx_post=f'/get_readme', target_id='code-generation-ui', hx_swap='outerHTML',
             cls=f'code-generation-button{" active" if active_button == README_BUTTON else ""}'),        
@@ -158,7 +158,12 @@ def CodeGenerationButtons(active_button:str=None, architecture_id:str=None):
             cls=f'code-generation-button{" active" if active_button == CONDITIONS_BUTTON else ""}'),
         Span(style="flex-grow: 1;"),  # This will push the checkbox to the right
         Label(
-            Input(type="checkbox", name="simulation_code", id="simulation_code_checkbox"),
+            Input(type="checkbox", name="simulation_code", id="simulation_code_checkbox",
+                  hx_post=f'/get_{active_button.lower()}',
+                  hx_target='#code-generation-ui',
+                  hx_swap='outerHTML',
+                  hx_include='#dsl,#architecture_id',
+                  checked=simulation_code),
             Span("Simulation Code", style="font-size: 0.8em; font-style: italic; color: #999;"),
             style="display: flex; align-items: center;"
         ),
@@ -171,7 +176,7 @@ def mk_name(name:str):
     # replace dashes and spaces with underscores, make it all lowercase
     return name.replace('-', '_').replace(' ', '_').lower()
 
-def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:str=None):
+def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:str=None, simulation_code:bool=False):
     arch = architectures[int(architecture_id)]
     arch_name = mk_name(arch['name']) or "graph"
     if active_button == README_BUTTON:
@@ -190,7 +195,8 @@ def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:
     
     arch_readme_div = Div(arch_div, id="architecture-readme", cls=f'tab-content{" active" if active_button == README_BUTTON else ""}')
     # Use the state from the architecture instead of generating it
-    state_pre = Pre(Code(arch['state'].strip()), id="state-code") if active_button == STATE_BUTTON else Pre(id="state-code")
+    state_content = gen_state(dsl).strip() if simulation_code else arch['state'].strip()
+    state_pre = Pre(Code(state_content), id="state-code") if active_button == STATE_BUTTON else Pre(id="state-code")
     state_div = Div(state_pre, cls=f'tab-content{" active" if active_button == STATE_BUTTON else ""}')
     graph_pre = Pre(Code(gen_graph(arch_name, dsl).strip()), id="graph-code") if active_button == GRAPH_BUTTON else Pre(id="graph-code")
     graph_div = Div(graph_pre, cls=f'tab-content{" active" if active_button == GRAPH_BUTTON else ""}')
@@ -207,10 +213,10 @@ def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:
         cls='toggle-buttons'
     )
 
-def GeneratedCode(active_button:str=None, dsl:str=None, architecture_id:str=None):
+def GeneratedCode(active_button:str=None, dsl:str=None, architecture_id:str=None, simulation_code:bool=False):
     return Div(
-        CodeGenerationButtons(active_button, architecture_id),
-        CodeGenerationContent(active_button, dsl, architecture_id),
+        CodeGenerationButtons(active_button, architecture_id, simulation_code),
+        CodeGenerationContent(active_button, dsl, architecture_id, simulation_code),
         cls='right-column',
         id='code-generation-ui',
     )
