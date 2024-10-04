@@ -204,9 +204,9 @@ def {node_name}(state):
 
 def gen_nodes(graph_spec):
     graph, start_node = parse_graph_spec(graph_spec)
-    print(graph)
+    result = "# GENERATED CODE -- useful only for simulation mode"  # newline at start of gen_node
     nodes = [gen_node(node_name) for node_name in graph if node_name != "START"]
-    return "\n".join(nodes)
+    return result + "\n".join(nodes)
 
 def find_conditions(node_dict):
     edges = node_dict["edges"]
@@ -223,6 +223,7 @@ def random_one_or_zero():
 
 def gen_condition(condition):
     return f"""
+# GENERATED CODE -- useful only for simulation mode
 def {condition}(state) -> bool:
     return random_one_or_zero()
 """
@@ -237,6 +238,7 @@ def gen_conditions(graph_spec):
 
 def mk_state(state_class):
     return f"""
+# GENERATED CODE -- useful only for simulation mode
 class {state_class}(TypedDict):
     states: Annotated[list[str], add_state]
     last_state: str
@@ -253,7 +255,10 @@ def gen_graph(graph_name, graph_spec, compile_args=None):
     nodes_added = []
 
     # Generate the graph state, node definitions, and entry point
-    graph_setup = f"{graph_name} = StateGraph({graph[start_node]['state']})\n"
+    graph_setup = "# GENERATED CODE -- working langgraph code\n"
+    graph_setup += f"# Node and Condition functions, and Graph State definition are needed,\n"
+    graph_setup += f"# values shown here are simulated, but show correct signature\n"
+    graph_setup += f"{graph_name} = StateGraph({graph[start_node]['state']})\n"
     if graph[start_node]["state"] == "MessageGraph":
         graph_setup = f"{graph_name} = MessageGraph()\n"
     for node_name in graph:

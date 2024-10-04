@@ -4,3 +4,5 @@ __pycache__
 data/gen_graph.db-shm
 data/gen_graph.db-wal
 .ipynb_checkpoints/
+.virtual_documents/
+logdir/

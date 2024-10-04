@@ -160,14 +160,19 @@ def CodeGenerationButtons(active_button:str=None, architecture_id:str=None):
         cls='toggle-buttons'
     )
 
+def mk_name(name:str):
+    # replace dashes and spaces with underscores, make it all lowercase
+    return name.replace('-', '_').replace(' ', '_').lower()
+
 def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:str=None):
+    arch = architectures[int(architecture_id)]
+    arch_name = mk_name(arch['name']) or "graph"
     if active_button == README_BUTTON:
         # Find the architecture by ID
         print(f"CodeGenerationContent: architecture_id={architecture_id}, type={type(architecture_id)}")
         print(f"CodeGenerationContent: architectures={architectures.keys()}")
         for key in architectures.keys():
             print(f"CodeGenerationContent: key={key}, type={type(key)}")
-        arch = architectures[int(architecture_id)]
         if arch:
             arch_md = arch['readme']
         else:
@@ -179,7 +184,7 @@ def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:
     arch_readme_div = Div(arch_div, id="architecture-readme", cls=f'tab-content{" active" if active_button == README_BUTTON else ""}')
     state_pre = Pre(Code(gen_state(dsl).strip()), id="state-code") if active_button == STATE_BUTTON else Pre(id="state-code")
     state_div = Div(state_pre, cls=f'tab-content{" active" if active_button == STATE_BUTTON else ""}')
-    graph_pre = Pre(Code(gen_graph("graph", dsl).strip()), id="graph-code") if active_button == GRAPH_BUTTON else Pre(id="graph-code")
+    graph_pre = Pre(Code(gen_graph(arch_name, dsl).strip()), id="graph-code") if active_button == GRAPH_BUTTON else Pre(id="graph-code")
     graph_div = Div(graph_pre, cls=f'tab-content{" active" if active_button == GRAPH_BUTTON else ""}')
     nodes_pre = Pre(Code(gen_nodes(dsl).strip()), id="nodes-code") if active_button == NODES_BUTTON else Pre(id="nodes-code")
     nodes_div = Div(nodes_pre, cls=f'tab-content{" active" if active_button == NODES_BUTTON else ""}')
