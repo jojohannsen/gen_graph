@@ -10,7 +10,7 @@ with open('README.md') as f:
 
 db = database('data/gen_graph.db')
 if 'architectures' not in db.t:
-    db.t.architectures.create(id=str, name=str, dsl=str, pk='id')
+    db.t.architectures.create(id=str, name=str, dsl=str, state=str, pk='id')
 
 def before(session):
     if 'sid' not in session:
@@ -189,7 +189,8 @@ def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:
         arch_div = ''
     
     arch_readme_div = Div(arch_div, id="architecture-readme", cls=f'tab-content{" active" if active_button == README_BUTTON else ""}')
-    state_pre = Pre(Code(gen_state(dsl).strip()), id="state-code") if active_button == STATE_BUTTON else Pre(id="state-code")
+    # Use the state from the architecture instead of generating it
+    state_pre = Pre(Code(arch['state'].strip()), id="state-code") if active_button == STATE_BUTTON else Pre(id="state-code")
     state_div = Div(state_pre, cls=f'tab-content{" active" if active_button == STATE_BUTTON else ""}')
     graph_pre = Pre(Code(gen_graph(arch_name, dsl).strip()), id="graph-code") if active_button == GRAPH_BUTTON else Pre(id="graph-code")
     graph_div = Div(graph_pre, cls=f'tab-content{" active" if active_button == GRAPH_BUTTON else ""}')
