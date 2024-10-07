@@ -4,25 +4,33 @@
 LCE, LangGraph, and LangSmith are a powerful combination for building agents.  
 But the huge amount of flexibility they allow can make it hard to get started.
 
-This is a tool for building agents that limits that flexibility to make it easier to create an agent.  The examples are taken from langgraph jupyter notebooks, just replacing the graph builder code with the DSL, leaving most of the remaining code unchanged.  
+This program shows some graph architectures taken from langchain/langgraph jupyter notebooks.
+
+The DSL notation is non-standard, but is equivalent to builder code (builder code is generated
+from it).   It serves two purpose:
+
+1. shows a visual (text) representation of the graph
+2. shows what functions need to be implemented (nodes and conditions)
+
+This is because the standard langgraph 'conditional edges' is way too complicated for what it does, and I've
+never been able to make sense of it.  There's strings, functions, mappings from strings to strings, mapping
+from strings to functions, etc.  In the end, it could just be a boolean function attached to an edge, so 
+that's what this is here.
 
 ###### How to create an agent
 
 1. Choose an initial langgraph architecture (left column)
-2. Modify the architecture for your specific task (middle column)
+2. Modify the architecture for your specific task (middle column, this is editable, the 'graph' tab shows the corresponding builder code)
 3. Modify the generated functions to make the architecture functional (right column) -- these are currently read-only.
 
 ###### Why?
 
-The goal here is to minimize the conceptual overhead for building an agent, to be able to try out
-more agents more quickly. 
+The end goal is really to simplify agent creation to make it easier for LLMs to build them.
 
-Without getting too philosophical, for me, it makes
-much more sense to think of humans and agents as tightly coupled and interchangeable.  So if creating agents 
-this way helps me try out more ideas more quickly, it will also help the agent that helps me with that.
+Without getting too philosophical, for me, humans and agents are both tightly coupled and interchangeable.  Think of it like a 'human-computer' being, with a varying percent of each.  
 
-Agents that help with building evaluations and regression testing will have an easier time as well if their
-options are limited to a few well defined building blocks.
+So in theory, if my graph implementation is node and condition functions with known signatures,
+my agent building helper will be more helpful to me, because that's the level I understand.
 
 ###### Graph Specification DSL
 
