@@ -9,8 +9,6 @@ with open('README.md') as f:
     about_md = f.read()
 
 db = database('data/gen_graph.db')
-if 'architectures' not in db.t:
-    db.t.architectures.create(id=str, name=str, dsl=str, state=str, pk='id')
 
 def before(session):
     if 'sid' not in session:
@@ -131,9 +129,71 @@ def post(dsl: str, architecture_id: str, simulation_code: str = "false"):
 def post(dsl: str, architecture_id:str, simulation_code: str = "false"):
     return GeneratedCode(GRAPH_BUTTON, dsl, architecture_id, simulation_code == "on")
 
+import ast
+
+def extract_global_variables(func_code):
+    class GlobalVarVisitor(ast.NodeVisitor):
+        def __init__(self):
+            self.global_vars = set()
+            self.local_vars = set()
+
+        def visit_FunctionDef(self, node):
+            # Add function arguments to local variables
+            self.local_vars.update(arg.arg for arg in node.args.args)
+            # Visit the function body
+            for item in node.body:
+                self.visit(item)
+
+        def visit_Name(self, node):
+            if isinstance(node.ctx, ast.Load) and node.id not in self.local_vars:
+                self.global_vars.add(node.id)
+            elif isinstance(node.ctx, ast.Store):
+                self.local_vars.add(node.id)
+
+        def visit_Assign(self, node):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    self.local_vars.add(target.id)
+            self.visit(node.value)
+
+        def visit_ListComp(self, node):
+            # Save the current state of local_vars
+            old_local_vars = self.local_vars.copy()
+            
+            # Add the comprehension variables to local_vars
+            for generator in node.generators:
+                if isinstance(generator.target, ast.Name):
+                    self.local_vars.add(generator.target.id)
+            
+            # Visit the comprehension elements
+            self.visit(node.elt)
+            
+            # Restore the old state of local_vars
+            self.local_vars = old_local_vars
+
+    tree = ast.parse(func_code)
+    visitor = GlobalVarVisitor()
+    visitor.visit(tree)
+    
+    # Remove built-in function names
+    builtins = set(dir(__builtins__))
+    global_vars = visitor.global_vars - builtins
+    
+    return sorted(list(global_vars))
+
+
 @rt("/get_nodes")
-def post(dsl:str, architecture_id:str, simulation_code: str = "false"):
-    return GeneratedCode(NODES_BUTTON, dsl, architecture_id, simulation_code == "on")
+def post(dsl:str, architecture_id:str, simulation_code: str = "off"):
+    arch = architectures[int(architecture_id)]
+    print(arch)
+    if simulation_code == "on":
+        nodes_content = gen_nodes(dsl).strip()
+    else:
+        nodes_content = arch['nodes'].strip()
+    global_vars = extract_global_variables(nodes_content)
+    if len(global_vars) > 0:
+        nodes_content = "# Global variables: " + ", ".join(global_vars) + "\n" + nodes_content
+    return GeneratedCode(NODES_BUTTON, dsl, architecture_id, simulation_code == "on", nodes_content=nodes_content)
 
 @rt("/get_conditions")
 def post(dsl:str, architecture_id:str, simulation_code: str = "false"):
@@ -177,15 +237,16 @@ def mk_name(name:str):
     # replace dashes and spaces with underscores, make it all lowercase
     return name.replace('-', '_').replace(' ', '_').replace('(', '').replace(')', '').lower()
 
-def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:str=None, simulation_code:bool=False):
+def CodeGenerationContent(
+        active_button:str=None, 
+        dsl:str=None, 
+        architecture_id:str=None, 
+        simulation_code:bool=False,
+        nodes_content:str=None
+        ):
     arch = architectures[int(architecture_id)]
     arch_name = mk_name(arch['name']) or "graph"
     if active_button == README_BUTTON:
-        # Find the architecture by ID
-        print(f"CodeGenerationContent: architecture_id={architecture_id}, type={type(architecture_id)}")
-        print(f"CodeGenerationContent: architectures={architectures.keys()}")
-        for key in architectures.keys():
-            print(f"CodeGenerationContent: key={key}, type={type(key)}")
         if arch:
             arch_md = arch['readme']
         else:
@@ -201,7 +262,7 @@ def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:
     state_div = Div(state_pre, cls=f'tab-content{" active" if active_button == STATE_BUTTON else ""}')
     graph_pre = Pre(Code(gen_graph(arch_name, dsl).strip()), id="graph-code") if active_button == GRAPH_BUTTON else Pre(id="graph-code")
     graph_div = Div(graph_pre, cls=f'tab-content{" active" if active_button == GRAPH_BUTTON else ""}')
-    nodes_pre = Pre(Code(gen_nodes(dsl).strip()), id="nodes-code") if active_button == NODES_BUTTON else Pre(id="nodes-code")
+    nodes_pre = Pre(Code(nodes_content), id="nodes-code") if active_button == NODES_BUTTON else Pre(id="nodes-code")
     nodes_div = Div(nodes_pre, cls=f'tab-content{" active" if active_button == NODES_BUTTON else ""}')
     conditions_pre = Pre(Code(gen_conditions(dsl).strip()), id="conditions-code") if active_button == CONDITIONS_BUTTON else Pre(id="conditions-code")
     conditions_div = Div(conditions_pre, cls=f'tab-content{" active" if active_button == CONDITIONS_BUTTON else ""}')
@@ -214,10 +275,10 @@ def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:
         cls='toggle-buttons'
     )
 
-def GeneratedCode(active_button:str=None, dsl:str=None, architecture_id:str=None, simulation_code:bool=False):
+def GeneratedCode(active_button:str=None, dsl:str=None, architecture_id:str=None, simulation_code:bool=False, nodes_content:str=None):
     return Div(
         CodeGenerationButtons(active_button, architecture_id, simulation_code),
-        CodeGenerationContent(active_button, dsl, architecture_id, simulation_code),
+        CodeGenerationContent(active_button, dsl, architecture_id, simulation_code, nodes_content),
         cls='right-column',
         id='code-generation-ui',
     )
