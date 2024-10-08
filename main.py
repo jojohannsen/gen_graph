@@ -175,7 +175,7 @@ def CodeGenerationButtons(active_button:str=None, architecture_id:str=None, simu
 
 def mk_name(name:str):
     # replace dashes and spaces with underscores, make it all lowercase
-    return name.replace('-', '_').replace(' ', '_').lower()
+    return name.replace('-', '_').replace(' ', '_').replace('(', '').replace(')', '').lower()
 
 def CodeGenerationContent(active_button:str=None, dsl:str=None, architecture_id:str=None, simulation_code:bool=False):
     arch = architectures[int(architecture_id)]

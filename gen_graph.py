@@ -6,7 +6,7 @@ def transform_graph_spec(graph_spec: str) -> str:
     transformed_lines = []
 
     for line in lines:
-        if not len(line) or line[0] in ["#", "-", "/"]:
+        if not len(line.strip()) or line[0] in ["#", "-", "/"]:
             continue
         if "=>" in line and not line[0].isspace():
             parts = line.split("=>")
@@ -233,7 +233,7 @@ def gen_conditions(graph_spec):
     for node_name, node_dict in graph.items():
         for condition in find_conditions(node_dict):
             conditions.append(gen_condition(condition))
-    result = "# GENERATED CODE -- useful only for simulation mode"
+    result = "# GENERATED CODE -- used for graph simulation mode"
     return result + "\n".join(conditions) if conditions else "# This graph has no conditional edges"
 
 def mk_state(state_class):
@@ -255,8 +255,8 @@ def gen_graph(graph_name, graph_spec, compile_args=None):
     nodes_added = []
 
     # Generate the graph state, node definitions, and entry point
-    graph_setup = "# GENERATED CODE -- working langgraph code, tested with simulation code.\n"
-    graph_setup += f"# Node and Condition functions, and Graph State definition are needed.\n"
+    graph_setup = "# GENERATED (working) CODE, generated from graph DSL.\n"
+    graph_setup += f"#  -- requires State class, Node and Condition functions\n"
 
     graph_setup += f"{graph_name} = StateGraph({graph[start_node]['state']})\n"
     if graph[start_node]["state"] == "MessageGraph":
