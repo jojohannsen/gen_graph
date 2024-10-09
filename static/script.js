@@ -29,12 +29,13 @@ function update_editor() {
     const newContent = document.getElementById('dsl').value;
     // Update the existing editor's content
     editor.setValue(newContent);
-    editor.setSize(null, "600px"); 
-    // Refresh the editor to ensure proper rendering
     editor.refresh();
     
     document.getElementById('readme_button').click();
 }
 
+document.body.addEventListener('htmx:afterSettle', function(event) {
+    if (editor) editor.refresh();
+  });
 // Call update_editor once when the page loads
 //document.addEventListener('DOMContentLoaded', update_editor);

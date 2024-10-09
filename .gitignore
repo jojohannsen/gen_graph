@@ -1,5 +1,6 @@
 .DS_Store
 .sesskey
+.vscode/
 __pycache__
 data/gen_graph.db-shm
 data/gen_graph.db-wal
