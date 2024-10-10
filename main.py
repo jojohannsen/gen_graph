@@ -181,6 +181,22 @@ def extract_global_variables(func_code):
     
     return sorted(list(global_vars))
 
+def format_undefined_lines(global_vars, line_length=40):
+    lines = []
+    current_line = "# UNDEFINED: "
+    
+    for var in global_vars:
+        if len(current_line) + len(var) + 2 > line_length:  # +2 for comma and space
+            lines.append(current_line.strip(", "))  # Remove trailing comma and space
+            current_line = "# UNDEFINED: "
+        
+        current_line += var + ", "
+    
+    if current_line.strip(", "):  # Append the last line if it's not empty
+        lines.append(current_line.strip(", "))
+    
+    return lines
+
 
 @rt("/get_nodes")
 def post(dsl:str, architecture_id:str, simulation_code: str = "off"):
@@ -191,8 +207,10 @@ def post(dsl:str, architecture_id:str, simulation_code: str = "off"):
     else:
         nodes_content = arch['nodes'].strip()
     global_vars = extract_global_variables(nodes_content)
+    
     if len(global_vars) > 0:
-        nodes_content = "# Global variables: " + ", ".join(global_vars) + "\n" + nodes_content
+        undefined_lines = format_undefined_lines(global_vars, line_length=60)
+        nodes_content = "\n".join(undefined_lines) + "\n" + nodes_content
     return GeneratedCode(NODES_BUTTON, 
                          dsl, 
                          architecture_id, 
@@ -322,7 +340,7 @@ def make_form(example_id:str):
             Div(Examples(example_id), cls='left-column'),
             Div(
                 Div(
-                    Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", cls="code-editor"),
+                    Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", rows=25,cls="code-editor"),
                     #Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
                     cls='middle-column'
                 ),

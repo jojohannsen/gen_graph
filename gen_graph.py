@@ -255,8 +255,7 @@ def gen_graph(graph_name, graph_spec, compile_args=None):
     nodes_added = []
 
     # Generate the graph state, node definitions, and entry point
-    graph_setup = "# GENERATED (working) CODE, generated from graph DSL.\n"
-    graph_setup += f"#  -- requires State class, Node and Condition functions\n"
+    graph_setup = "# GENERATED Python langgraph builder code from graph DSL.\n"
 
     graph_setup += f"{graph_name} = StateGraph({graph[start_node]['state']})\n"
     if graph[start_node]["state"] == "MessageGraph":

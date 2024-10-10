@@ -27,7 +27,7 @@
     padding: 10px;
     display: flex;
     flex-direction: column;
-    height: 800px;
+    height: 100%;
     width: auto;
 }
 .right-column {
@@ -80,6 +80,7 @@
 }
 #dsl {
     width: 100%;
+    height: 100%;
     box-sizing: border-box;
     margin: 0;
     padding: 10px;
@@ -119,7 +120,7 @@ body {
 
 /* CodeMirror styles */
 .CodeMirror {
-    height: 800px; /* Increase this value to make the editor taller */
+    height: 100% !important; /* Increase this value to make the editor taller */
     border: 1px solid #ccc;
     font-family: monospace;
     font-size: 14px;
@@ -127,11 +128,12 @@ body {
 }
 
 .CodeMirror-scroll {
-    max-height: 800px; /* Adjust this to match the height of CodeMirror */
+    height: 100% !important;
+    max-height: none;
 }
 
 .cm-s-default {
-    height: 800px;
+    height: 100%;
 }
 
 .cm-s-default .cm-keyword {
