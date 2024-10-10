@@ -1,21 +1,42 @@
 
-#### Building Langraph Architectures
-
 LCE, LangGraph, and LangSmith are a powerful combination for building agents.  
-But the huge amount of flexibility they allow can make it hard to get started.
+But the flexibility they allow can make it hard to get started.
 
 This program shows some graph architectures taken from langchain/langgraph jupyter notebooks.
 
-The DSL notation is non-standard, but is equivalent to builder code (builder code is generated
-from it).   It serves two purpose:
+The DSL notation is non-standard, but serves two purpose:
 
 1. shows a visual (text) representation of the graph
 2. shows what functions need to be implemented (nodes and conditions)
 
-This is because the standard langgraph 'conditional edges' is way too complicated for what it does, and I've
-never been able to make sense of it.  There's strings, functions, mappings from strings to strings, mapping
-from strings to functions, etc.  In the end, it could just be a boolean function attached to an edge, so 
-that's what this is here.
+This is equivalent to the builder code, but it's easier to understand.  The equivalent builder code is generated from this text.
+
+#### DSL syntax
+1. `START(StateClassNameGoesHere) => first_node`
+- "START" is a special node, include name of graph State class
+2. `node_name => next_node`
+- unconditional edge between nodes
+3. ```node_name
+  condition_1 => another_node
+  condition_2 => yet_another_node
+  => default_next_node
+  ```
+- conditional edges between nodes
+
+Here's an example:
+```
+START(ModelCompare) => call_model
+
+call_model => call_openai_model, call_anthropic_model
+
+call_openai_model, call_anthropic_model => human_chooses
+
+human_chooses => handle_human_request
+
+handle_human_request
+  wants_to_quit => END
+  => call_model
+```
 
 ###### How to create an agent
 

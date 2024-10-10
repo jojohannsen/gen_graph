@@ -50,8 +50,11 @@ def get(show:bool):
 def get(selected_example: str):
     return Examples(selected_example), Hidden(selected_example, id="architecture_id", hx_swap="outerHTML")
 
-def remove_non_alphanumeric(input_string):
-    return re.sub(r'[^a-zA-Z0-9]', '', input_string)
+def sanitize_filename(name: str) -> str:
+    # Convert to lowercase, replace spaces with hyphens, remove parentheses
+    name = name.lower().replace(' ', '-').replace(',', '').replace('(', '').replace(')', '')
+    # Remove any non-alphanumeric characters (except hyphens)
+    return re.sub(r'[^a-z0-9-]', '', name)
 
 def Examples(selected_example=None):
     if selected_example is None:
@@ -59,16 +62,28 @@ def Examples(selected_example=None):
     return Div(
         Hidden(selected_example, id="architecture_id", hx_swap="outerHTML"),
         Div(
-            *[A(arch['name'], 
-                id=f"example-link-{remove_non_alphanumeric(arch['name'])}",
-                cls=f"example-link{' selected' if arch['id'] == selected_example else ''}", 
-                hx_get=f"/architecture/{arch['id']}", 
-                hx_target="#dsl",
-                hx_trigger="click, keyup[key=='Enter']",
-                hx_on="htmx:afterOnLoad: function() { if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); } }",
+            *[Div(
+                Div(
+                    A(arch['name'], 
+                      id=f"example-link-{sanitize_filename(arch['name'])}",
+                      cls=f"example-link{' selected' if arch['id'] == selected_example else ''}", 
+                      hx_get=f"/architecture/{arch['id']}", 
+                      hx_target="#dsl",
+                      hx_trigger="click, keyup[key=='Enter']",
+                      hx_on="htmx:afterOnLoad: function() { if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); } }",
+                    ),
+                ),
+                Div(
+                    A(f"Download {sanitize_filename(arch['name'])}.ipynb", 
+                      href=f"/download/{sanitize_filename(arch['name'])}.ipynb",
+                      cls="download-notebook-link",
+                      style="font-size: 0.8em; display: none;" if arch['id'] != selected_example else "font-size: 0.8em;"),
+                    style="margin-left: 20px; margin-top: 5px;"  # Add indent and some top margin
+                ),
+                style="margin-bottom: 10px;"  # Add some space between architecture entries
               )
               for arch in architectures.values()],
-              style="padding-top: 10px;"
+            style="padding-top: 10px;"
         ),
         Script("if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); }"),
         cls="column left-column",
@@ -263,13 +278,13 @@ def CodeGenerationButtons(active_button:str=None, architecture_id:str=None, simu
 
 def mk_name(name:str):
     # replace dashes and spaces with underscores, make it all lowercase
-    return name.replace('-', '_').replace(' ', '_').replace('(', '').replace(')', '').lower()
+    return name.replace('-', '_').replace(',', '').replace(' ', '_').replace('(', '').replace(')', '').lower()
 
 def CodeGenerationContent(
         active_button:str=None, 
         dsl:str=None, 
         architecture_id:str=None, 
-        simulation_code:bool=False,
+        simulation_code:bool=False, 
         nodes_content:str=None,
         conditions_content:str=None
         ):
@@ -377,5 +392,11 @@ def get(arch_id:int):
     if arch is None:
         raise HTTPException(status_code=404, detail="Architecture not found")
     return arch['graph_spec'].strip(), Examples(arch_id)
+
+@rt("/download/{notebook_name}")
+def get(notebook_name: str):
+    # Here you would generate or fetch the notebook file
+    # For now, we'll just return a placeholder response
+    return PlainTextResponse(f"This would be the notebook for {notebook_name}")
 
 serve()
