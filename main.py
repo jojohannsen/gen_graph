@@ -28,35 +28,20 @@ app, rt = fast_app(
 )
 
 # Function to load all architectures from the database
-def load_architectures():
+def load_architectures() -> dict:
     architectures = {row['id']: row for row in db.t.architectures()}
     return dict(sorted(architectures.items(), key=lambda item: item[1]['name'].lower()))
 
 # Load architectures from the database
 architectures = load_architectures()
 
-instructions = {
-    "First line must contain the State class and the first node": ["START(StateClassName) => first_node"],
-    "Nodes start on left margin": ["first_node => second_node"],
-    "Conditions MUST be indented, and show the name of the conditional function": ["node_1", "  should_call_tool => tool_node", "  conditionY => node_3"],
-    "The conditional function looks like this:": ["def should_call_tool(state: State) -> bool:", "  # your code here", "  return state['some_key'] == 'call_a_tool'"],
-}
-
-@rt("/toggle_syntax/{show}")
-def get(show:bool):
-    return Div(instructions, id="syntax", style="display: none;" if show else "display: block;")
-
-@rt("/examples/{selected_example}")
-def get(selected_example: str):
-    return Examples(selected_example), Hidden(selected_example, id="architecture_id", hx_swap="outerHTML")
+BUTTON_TYPES = ['README', 'STATE', 'NODES', 'CONDITIONS', 'GRAPH', 'TOOLS', 'MODELS']
 
 def sanitize_filename(name: str) -> str:
-    # Convert to lowercase, replace spaces with hyphens, remove parentheses
     name = name.lower().replace(' ', '-').replace(',', '').replace('(', '').replace(')', '')
-    # Remove any non-alphanumeric characters (except hyphens)
     return re.sub(r'[^a-z0-9-]', '', name)
 
-def Examples(selected_example=None):
+def Examples(selected_example: str = None):
     if selected_example is None:
         selected_example = next(iter(architectures.keys()))
     return Div(
@@ -78,9 +63,9 @@ def Examples(selected_example=None):
                       href=f"/download/{sanitize_filename(arch['name'])}.ipynb",
                       cls="download-notebook-link",
                       style="font-size: 0.8em; display: none;" if arch['id'] != selected_example else "font-size: 0.8em;"),
-                    style="margin-left: 20px; margin-top: 5px;"  # Add indent and some top margin
+                    style="margin-left: 20px; margin-top: 5px;"
                 ),
-                style="margin-bottom: 10px;"  # Add some space between architecture entries
+                style="margin-bottom: 10px;"
               )
               for arch in architectures.values()],
             style="padding-top: 10px;"
@@ -132,148 +117,57 @@ def TitleHeader():
         cls="header-container"
     )
 
-@rt("/get_readme")
-def post(dsl: str, architecture_id:str, simulation_code: str = "false"):
-    return GeneratedCode(README_BUTTON, dsl, architecture_id, simulation_code == "on", conditions_content=None)
+def mk_name(name:str):
+    return name.replace('-', '_').replace(',', '').replace(' ', '_').replace('(', '').replace(')', '').lower()
 
-@rt("/get_state")
-def post(dsl: str, architecture_id: str, simulation_code: str = "false"):
-    return GeneratedCode(STATE_BUTTON, dsl, architecture_id, simulation_code == "on", conditions_content=None)
-
-@rt("/get_graph")
-def post(dsl: str, architecture_id:str, simulation_code: str = "false"):
-    return GeneratedCode(GRAPH_BUTTON, dsl, architecture_id, simulation_code == "on", conditions_content=None)
-
-import ast
-
-def extract_global_variables(func_code):
-    class GlobalVarVisitor(ast.NodeVisitor):
-        def __init__(self):
-            self.global_vars = set()
-            self.local_vars = set()
-
-        def visit_FunctionDef(self, node):
-            # Add function arguments to local variables
-            self.local_vars.update(arg.arg for arg in node.args.args)
-            # Visit the function body
-            for item in node.body:
-                self.visit(item)
-
-        def visit_Name(self, node):
-            if isinstance(node.ctx, ast.Load) and node.id not in self.local_vars:
-                self.global_vars.add(node.id)
-            elif isinstance(node.ctx, ast.Store):
-                self.local_vars.add(node.id)
-
-        def visit_Assign(self, node):
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    self.local_vars.add(target.id)
-            self.visit(node.value)
-
-        def visit_ListComp(self, node):
-            # Save the current state of local_vars
-            old_local_vars = self.local_vars.copy()
-            
-            # Add the comprehension variables to local_vars
-            for generator in node.generators:
-                if isinstance(generator.target, ast.Name):
-                    self.local_vars.add(generator.target.id)
-            
-            # Visit the comprehension elements
-            self.visit(node.elt)
-            
-            # Restore the old state of local_vars
-            self.local_vars = old_local_vars
-
-    tree = ast.parse(func_code)
-    visitor = GlobalVarVisitor()
-    visitor.visit(tree)
-    
-    # Remove built-in function names
-    builtins = set(dir(__builtins__))
-    global_vars = visitor.global_vars - builtins
-    
-    return sorted(list(global_vars))
-
-def format_undefined_lines(global_vars, line_length=40):
-    lines = []
-    current_line = "# UNDEFINED: "
-    
-    for var in global_vars:
-        if len(current_line) + len(var) + 2 > line_length:  # +2 for comma and space
-            lines.append(current_line.strip(", "))  # Remove trailing comma and space
-            current_line = "# UNDEFINED: "
-        
-        current_line += var + ", "
-    
-    if current_line.strip(", "):  # Append the last line if it's not empty
-        lines.append(current_line.strip(", "))
-    
-    return lines
-
-
-@rt("/get_nodes")
-def post(dsl:str, architecture_id:str, simulation_code: str = "off"):
-    arch = architectures[int(architecture_id)]
-    print(arch)
-    if simulation_code == "on":
-        nodes_content = gen_nodes(dsl).strip()
+def generate_code(architecture_id: int, button_type: str, simulation: bool) -> str:
+    arch = architectures[architecture_id]
+    if button_type == 'GRAPH':
+        return gen_graph(mk_name(arch['name']), arch['graph_spec']).strip()
+    elif simulation:
+        simulation_functions = {
+            'STATE': gen_state,
+            'NODES': gen_nodes,
+            'CONDITIONS': gen_conditions,
+            'TOOLS': lambda _: "# Tools simulation not implemented",
+            'MODELS': lambda _: "# Models simulation not implemented"
+        }
+        return simulation_functions[button_type](arch['graph_spec']).strip()
     else:
-        nodes_content = arch['nodes'].strip()
-    global_vars = extract_global_variables(nodes_content)
-    
-    if len(global_vars) > 0:
-        undefined_lines = format_undefined_lines(global_vars, line_length=60)
-        nodes_content = "\n".join(undefined_lines) + "\n" + nodes_content
-    return GeneratedCode(NODES_BUTTON, 
-                         dsl, 
-                         architecture_id, 
-                         simulation_code == "on", 
-                         nodes_content=nodes_content,
-                         conditions_content=None)
+        return arch[button_type.lower()].strip()
 
-@rt("/get_conditions")
-def post(dsl:str, architecture_id:str, simulation_code: str = "false"):
-    arch = architectures[int(architecture_id)]
-    if simulation_code == "on":
-        conditions_content = gen_conditions(dsl).strip()
-    else:
-        conditions_content = arch['conditions'].strip()
-    return GeneratedCode(CONDITIONS_BUTTON, dsl, architecture_id, simulation_code == "on", conditions_content=conditions_content)
+@rt("/get_code/{button_type}")
+def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str = "false"):
+    simulation = simulation_code == "on" and button_type != 'GRAPH'
+    code = generate_code(int(architecture_id), button_type.upper(), simulation)
+    return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code)
 
-README_BUTTON = 'README'
-STATE_BUTTON = 'State'
-NODES_BUTTON = 'Nodes'
-CONDITIONS_BUTTON = 'Conditions'
-GRAPH_BUTTON = 'Graph'
-TOOLS_BUTTON = 'Tools'  # Remove underscores
-MODELS_BUTTON = 'Models'  # Remove underscores
-
-def CodeGenerationButtons(active_button:str=None, architecture_id:str=None, simulation_code:bool=False):
+def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: bool):
+    button_labels = {
+        'README': 'Readme',
+        'STATE': 'State',
+        'NODES': 'Nodes',
+        'CONDITIONS': 'Conditions',
+        'GRAPH': 'Graph',
+        'TOOLS': 'Tools',
+        'MODELS': 'Models'
+    }
     return Div(  
-        Button(README_BUTTON, id="readme_button", hx_post=f'/get_readme', target_id='code-generation-ui', hx_swap='outerHTML',
-            cls=f'code-generation-button{" active" if active_button == README_BUTTON else ""}'),        
-        Button(STATE_BUTTON, hx_post='/get_state', target_id='code-generation-ui', hx_swap='outerHTML',
-            cls=f'code-generation-button{" active" if active_button == STATE_BUTTON else ""}'),
-        Button(NODES_BUTTON, hx_post='/get_nodes', target_id='code-generation-ui', hx_swap='outerHTML',
-            cls=f'code-generation-button{" active" if active_button == NODES_BUTTON else ""}'),
-        Button(CONDITIONS_BUTTON, hx_post='/get_conditions', target_id='code-generation-ui', hx_swap='outerHTML',
-            cls=f'code-generation-button{" active" if active_button == CONDITIONS_BUTTON else ""}'),
-        Button(GRAPH_BUTTON, hx_post='/get_graph', target_id='code-generation-ui', hx_swap='outerHTML',
-            cls=f'code-generation-button{" active" if active_button == GRAPH_BUTTON else ""}'),
-        Button(TOOLS_BUTTON, hx_post='/get_tools', target_id='code-generation-ui', hx_swap='outerHTML',
-            cls=f'code-generation-button italic{" active" if active_button == TOOLS_BUTTON else ""}'),
-        Button(MODELS_BUTTON, hx_post='/get_models', target_id='code-generation-ui', hx_swap='outerHTML',
-            cls=f'code-generation-button italic{" active" if active_button == MODELS_BUTTON else ""}'),
+        *[Button(button_labels[btn], id=f"{btn.lower()}_button", 
+                 hx_post=f'/get_code/{btn}', 
+                 target_id='code-generation-ui', 
+                 hx_swap='outerHTML',
+                 cls=f'code-generation-button{" active" if active_button == btn else ""}{" italic" if btn in ["TOOLS", "MODELS"] else ""}')
+          for btn in BUTTON_TYPES],
         Span(style="flex-grow: 1;"),
         Label(
             Input(type="checkbox", name="simulation_code", id="simulation_code_checkbox",
-                  hx_post=f'/get_{active_button.lower().replace("_", "")}',
+                  hx_post=f'/get_code/{active_button}',
                   hx_target='#code-generation-ui',
                   hx_swap='outerHTML',
                   hx_include='#dsl,#architecture_id',
-                  checked=simulation_code),
+                  checked=simulation,
+                  disabled=active_button == 'GRAPH'),
             Span("Simulation Code", style="font-size: 0.8em; font-style: italic; color: #999;"),
             style="display: flex; align-items: center;"
         ),
@@ -282,69 +176,24 @@ def CodeGenerationButtons(active_button:str=None, architecture_id:str=None, simu
         style="display: flex; justify-content: space-between; align-items: center;"
     )
 
-def mk_name(name:str):
-    # replace dashes and spaces with underscores, make it all lowercase
-    return name.replace('-', '_').replace(',', '').replace(' ', '_').replace('(', '').replace(')', '').lower()
-
-def CodeGenerationContent(
-        active_button:str=None, 
-        dsl:str=None, 
-        architecture_id:str=None, 
-        simulation_code:bool=False, 
-        nodes_content:str=None,
-        conditions_content:str=None
-        ):
-    arch = architectures[int(architecture_id)]
-    arch_name = mk_name(arch['name']) or "graph"
-    if active_button == README_BUTTON:
-        if arch:
-            arch_md = arch['readme']
-        else:
-            arch_md = "README not available for this architecture."
-        arch_div = Div(arch_md, cls='marked', style='padding: 20px; text-align: left;'),
+def CodeGenerationContent(active_button: str, architecture_id: str, simulation: bool, content: str):
+    if active_button == 'README':
+        return Div(Div(content, cls='marked', style='padding: 20px; text-align: left;'),
+                   id="architecture-readme", 
+                   cls=f'tab-content active')
     else:
-        arch_div = ''
-    
-    arch_readme_div = Div(arch_div, id="architecture-readme", cls=f'tab-content{" active" if active_button == README_BUTTON else ""}')
-    state_content = gen_state(dsl).strip() if simulation_code else arch['state'].strip()
-    state_pre = Pre(Code(state_content), id="state-code") if active_button == STATE_BUTTON else Pre(id="state-code")
-    state_div = Div(state_pre, cls=f'tab-content{" active" if active_button == STATE_BUTTON else ""}')
-    nodes_pre = Pre(Code(nodes_content), id="nodes-code") if active_button == NODES_BUTTON else Pre(id="nodes-code")
-    nodes_div = Div(nodes_pre, cls=f'tab-content{" active" if active_button == NODES_BUTTON else ""}')
-    conditions_pre = Pre(Code(conditions_content), id="conditions-code") if active_button == CONDITIONS_BUTTON else Pre(id="conditions-code")
-    conditions_div = Div(conditions_pre, cls=f'tab-content{" active" if active_button == CONDITIONS_BUTTON else ""}')
-    graph_pre = Pre(Code(gen_graph(arch_name, dsl).strip()), id="graph-code") if active_button == GRAPH_BUTTON else Pre(id="graph-code")
-    graph_div = Div(graph_pre, cls=f'tab-content{" active" if active_button == GRAPH_BUTTON else ""}')
-    
-    # Add new divs for Tools and Models
-    tools_content = "# Sample Tools Content\n\ndef tool1():\n    pass\n\ndef tool2():\n    pass"
-    tools_pre = Pre(Code(tools_content), id="tools-code") if active_button == TOOLS_BUTTON else Pre(id="tools-code")
-    tools_div = Div(tools_pre, cls=f'tab-content{" active" if active_button == TOOLS_BUTTON else ""}')
-    
-    models_content = "# Sample Models Content\n\nmodel1 = SomeModel()\nmodel2 = AnotherModel()"
-    models_pre = Pre(Code(models_content), id="models-code") if active_button == MODELS_BUTTON else Pre(id="models-code")
-    models_div = Div(models_pre, cls=f'tab-content{" active" if active_button == MODELS_BUTTON else ""}')
-    
-    return Div(
-        arch_readme_div,
-        state_div,
-        nodes_div,
-        conditions_div,
-        graph_div,
-        tools_div,
-        models_div,
-        cls='toggle-buttons'
-    )
+        return Div(Pre(Code(content), id=f"{active_button.lower()}-code"),
+                   cls=f'tab-content active')
 
-def GeneratedCode(active_button:str=None, dsl:str=None, architecture_id:str=None, simulation_code:bool=False, nodes_content:str=None, conditions_content:str=None):
+def GeneratedCode(active_button: str, dsl: str, architecture_id: str, simulation: bool, content: str):
     return Div(
-        CodeGenerationButtons(active_button, architecture_id, simulation_code),
-        CodeGenerationContent(active_button, dsl, architecture_id, simulation_code, nodes_content, conditions_content),
+        CodeGenerationButtons(active_button, architecture_id, simulation),
+        CodeGenerationContent(active_button, architecture_id, simulation, content),
         cls='right-column',
         id='code-generation-ui',
     )
 
-def TheWholeEnchilada(architecture_id:str):
+def TheWholeEnchilada(architecture_id: str):
     return Div(
         Div(id="readme_content"),
         make_form(architecture_id), 
@@ -365,19 +214,17 @@ def get():
         cls='full-width',
     )
 
-def make_form(example_id:str):
-    print(f"make_form: example_id={example_id}")
-    initial_dsl = architectures[example_id]['graph_spec']
+def make_form(example_id: str):
+    initial_dsl = architectures[int(example_id)]['graph_spec']
     return Form()(
         Div(
             Div(Examples(example_id), cls='left-column'),
             Div(
                 Div(
-                    Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", rows=25,cls="code-editor"),
-                    #Div(Ol(Li(Div(s), Pre("\n".join([line for line in code]))) for s,code in instructions.items())),
+                    Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", rows=25, cls="code-editor"),
                     cls='middle-column'
                 ),
-                GeneratedCode(README_BUTTON, initial_dsl, example_id),
+                GeneratedCode('README', initial_dsl, example_id, False, architectures[int(example_id)]['readme']),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
                 Script(src="/static/script.js", defer=True),
@@ -388,24 +235,8 @@ def make_form(example_id:str):
         cls='main-container'
     )
 
-@rt("/hide_readme")
-def get():
-    return redirect("/")
-
-@rt("/view_readme")
-def get():
-    return Div(
-        Div(about_md, cls='marked', style='padding: 20px; text-align: left;'),
-        id="readme_content"
-    ), A("Hide README", 
-         hx_get='/hide_readme', 
-         hx_target="#readme_content",
-         hx_swap="outerHTML",
-         id="readme_link",
-         hx_swap_oob="true")
-
 @rt("/architecture/{arch_id}")
-def get(arch_id:int):
+def get(arch_id: int):
     arch = architectures.get(arch_id)
     if arch is None:
         raise HTTPException(status_code=404, detail="Architecture not found")
@@ -413,8 +244,6 @@ def get(arch_id:int):
 
 @rt("/download/{notebook_name}")
 def get(notebook_name: str):
-    # Here you would generate or fetch the notebook file
-    # For now, we'll just return a placeholder response
     return PlainTextResponse(f"This would be the notebook for {notebook_name}")
 
 serve()
