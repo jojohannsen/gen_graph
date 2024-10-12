@@ -107,6 +107,10 @@ body {
     font-weight: bold;
 }
 
+.code-generation-button.italic {
+    font-style: italic;
+    opacity: 0.8;
+}
 
 .toggle-buttons button {
     background-color: lightgray;

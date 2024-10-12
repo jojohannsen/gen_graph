@@ -247,6 +247,8 @@ STATE_BUTTON = 'State'
 NODES_BUTTON = 'Nodes'
 CONDITIONS_BUTTON = 'Conditions'
 GRAPH_BUTTON = 'Graph'
+TOOLS_BUTTON = 'Tools'  # Remove underscores
+MODELS_BUTTON = 'Models'  # Remove underscores
 
 def CodeGenerationButtons(active_button:str=None, architecture_id:str=None, simulation_code:bool=False):
     return Div(  
@@ -260,10 +262,14 @@ def CodeGenerationButtons(active_button:str=None, architecture_id:str=None, simu
             cls=f'code-generation-button{" active" if active_button == CONDITIONS_BUTTON else ""}'),
         Button(GRAPH_BUTTON, hx_post='/get_graph', target_id='code-generation-ui', hx_swap='outerHTML',
             cls=f'code-generation-button{" active" if active_button == GRAPH_BUTTON else ""}'),
-        Span(style="flex-grow: 1;"),  # This will push the checkbox to the right
+        Button(TOOLS_BUTTON, hx_post='/get_tools', target_id='code-generation-ui', hx_swap='outerHTML',
+            cls=f'code-generation-button italic{" active" if active_button == TOOLS_BUTTON else ""}'),
+        Button(MODELS_BUTTON, hx_post='/get_models', target_id='code-generation-ui', hx_swap='outerHTML',
+            cls=f'code-generation-button italic{" active" if active_button == MODELS_BUTTON else ""}'),
+        Span(style="flex-grow: 1;"),
         Label(
             Input(type="checkbox", name="simulation_code", id="simulation_code_checkbox",
-                  hx_post=f'/get_{active_button.lower()}',
+                  hx_post=f'/get_{active_button.lower().replace("_", "")}',
                   hx_target='#code-generation-ui',
                   hx_swap='outerHTML',
                   hx_include='#dsl,#architecture_id',
@@ -309,12 +315,24 @@ def CodeGenerationContent(
     conditions_div = Div(conditions_pre, cls=f'tab-content{" active" if active_button == CONDITIONS_BUTTON else ""}')
     graph_pre = Pre(Code(gen_graph(arch_name, dsl).strip()), id="graph-code") if active_button == GRAPH_BUTTON else Pre(id="graph-code")
     graph_div = Div(graph_pre, cls=f'tab-content{" active" if active_button == GRAPH_BUTTON else ""}')
+    
+    # Add new divs for Tools and Models
+    tools_content = "# Sample Tools Content\n\ndef tool1():\n    pass\n\ndef tool2():\n    pass"
+    tools_pre = Pre(Code(tools_content), id="tools-code") if active_button == TOOLS_BUTTON else Pre(id="tools-code")
+    tools_div = Div(tools_pre, cls=f'tab-content{" active" if active_button == TOOLS_BUTTON else ""}')
+    
+    models_content = "# Sample Models Content\n\nmodel1 = SomeModel()\nmodel2 = AnotherModel()"
+    models_pre = Pre(Code(models_content), id="models-code") if active_button == MODELS_BUTTON else Pre(id="models-code")
+    models_div = Div(models_pre, cls=f'tab-content{" active" if active_button == MODELS_BUTTON else ""}')
+    
     return Div(
         arch_readme_div,
         state_div,
         nodes_div,
         conditions_div,
         graph_div,
+        tools_div,
+        models_div,
         cls='toggle-buttons'
     )
 
