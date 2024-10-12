@@ -1,6 +1,7 @@
 from fasthtml.common import *
 from fastlite import database
 from gen_graph import gen_graph, gen_nodes, gen_conditions, gen_state
+from code_utils.code_snippet_analyzer import CodeSnippetAnalyzer
 import uuid
 import re
 
@@ -136,11 +137,6 @@ def generate_code(architecture_id: int, button_type: str, simulation: bool) -> s
     else:
         return arch[button_type.lower()].strip()
 
-@rt("/get_code/{button_type}")
-def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str = "false"):
-    simulation = simulation_code == "on" and button_type != 'GRAPH'
-    code = generate_code(int(architecture_id), button_type.upper(), simulation)
-    return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code)
 
 def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: bool):
     button_labels = {
@@ -185,13 +181,53 @@ def CodeGenerationContent(active_button: str, architecture_id: str, simulation: 
         return Div(Pre(Code(content), id=f"{active_button.lower()}-code"),
                    cls=f'tab-content active')
 
-def GeneratedCode(active_button: str, dsl: str, architecture_id: str, simulation: bool, content: str):
+
+def format_analysis_summary(summary):
+    defined, undefined, defined_elsewhere = summary
+    messages = []
+    if defined:
+        messages.append(f"Defined variables: {', '.join(defined)}")
+    if undefined:
+        messages.append(f"Undefined variables: {', '.join(undefined)}")
+    if defined_elsewhere:
+        messages.append(f"Variables defined elsewhere: {', '.join(defined_elsewhere)}")
+    return messages
+
+
+@rt("/get_code/{button_type}")
+def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str = "false"):
+    simulation = simulation_code == "on" and button_type != 'GRAPH'
+    code = generate_code(int(architecture_id), button_type.upper(), simulation)
+    
+    # Get the analysis for this architecture
+    analyzer = analyze_architecture_code(int(architecture_id))
+    
+    # Get the summary for this specific snippet
+    snippet_name = button_type.lower()
+    if simulation and snippet_name in ['state', 'nodes', 'conditions']:
+        snippet_name = f"{snippet_name}_simulation"
+    summary = analyzer.get_snippet_summary(snippet_name)
+    
+    analysis_messages = format_analysis_summary(summary) if summary else ["No analysis available for this snippet."]
+    
+    return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages)
+
+
+def GeneratedCode(active_button: str, dsl: str, architecture_id: str, simulation: bool, content: str, analysis_messages: list):
     return Div(
         CodeGenerationButtons(active_button, architecture_id, simulation),
         CodeGenerationContent(active_button, architecture_id, simulation, content),
+        Div(
+            Div(*[Div(message, cls="message info") for message in analysis_messages],
+                cls="message-area",
+                style="margin-top: 20px;"),
+            cls="message-area",
+            style="margin-top: 20px;"
+        ),
         cls='right-column',
         id='code-generation-ui',
     )
+
 
 def TheWholeEnchilada(architecture_id: str):
     return Div(
@@ -216,6 +252,12 @@ def get():
 
 def make_form(example_id: str):
     initial_dsl = architectures[int(example_id)]['graph_spec']
+    
+    # Analyze the initial architecture
+    analyzer = analyze_architecture_code(int(example_id))
+    readme_summary = analyzer.get_snippet_summary('readme') or (set(), set(), set())
+    analysis_messages = format_analysis_summary(readme_summary)
+    
     return Form()(
         Div(
             Div(Examples(example_id), cls='left-column'),
@@ -224,7 +266,7 @@ def make_form(example_id: str):
                     Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", rows=25, cls="code-editor"),
                     cls='middle-column'
                 ),
-                GeneratedCode('README', initial_dsl, example_id, False, architectures[int(example_id)]['readme']),
+                GeneratedCode('README', initial_dsl, example_id, False, architectures[int(example_id)]['readme'], analysis_messages),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
                 Script(src="/static/script.js", defer=True),
@@ -234,6 +276,25 @@ def make_form(example_id: str):
         ), 
         cls='main-container'
     )
+#aa
+@rt("/get_code/{button_type}")
+def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str = "false"):
+    simulation = simulation_code == "on" and button_type != 'GRAPH'
+    code = generate_code(int(architecture_id), button_type.upper(), simulation)
+    
+    # Get the analysis for this architecture
+    analyzer = analyze_architecture_code(int(architecture_id))
+    
+    # Get the summary for this specific snippet
+    snippet_name = button_type.lower()
+    if simulation and snippet_name in ['state', 'nodes', 'conditions']:
+        snippet_name = f"{snippet_name}_simulation"
+    summary = analyzer.get_snippet_summary(snippet_name)
+    
+    analysis_messages = format_analysis_summary(summary) if summary else ["No analysis available for this snippet."]
+    
+    return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages)
+
 
 @rt("/architecture/{arch_id}")
 def get(arch_id: int):
@@ -245,5 +306,28 @@ def get(arch_id: int):
 @rt("/download/{notebook_name}")
 def get(notebook_name: str):
     return PlainTextResponse(f"This would be the notebook for {notebook_name}")
+
+def analyze_architecture_code(architecture_id: int) -> CodeSnippetAnalyzer:
+    arch = architectures[architecture_id]
+    
+    if arch is None:
+        raise ValueError(f"Architecture with id {architecture_id} not found")
+
+    analyzer = CodeSnippetAnalyzer()
+
+    # Analyze each code snippet
+    for field in ['state', 'nodes', 'conditions', 'models', 'tools']:
+        code = arch.get(field, '').strip()
+        if code:
+            analyzer.add_snippet(field, code)
+
+    # Generate and analyze graph code
+    graph_code = gen_graph(mk_name(arch['name']), arch['graph_spec']).strip()
+    analyzer.add_snippet('graph', graph_code)
+
+    # Perform analysis on all snippets
+    analyzer.analyze_all_snippets()
+
+    return analyzer
 
 serve()
