@@ -213,17 +213,32 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
     return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages)
 
 
+# ... existing code ...
+
+def AnalysisMessages(analysis_messages: list):
+    def format_message(message: str):
+        if message.startswith("Defined variables:"):
+            return "Defined: " + message.split(": ", 1)[1], "success"
+        elif message.startswith("Undefined variables:"):
+            return "Undefined: " + message.split(": ", 1)[1], "error"
+        elif message.startswith("Variables defined elsewhere:"):
+            return "Defined elsewhere: " + message.split(": ", 1)[1], "info"
+        else:
+            return message, "info"
+
+    return Div(
+        *[Div(formatted_message, cls=f"message {message_type}")
+          for message in analysis_messages
+          for formatted_message, message_type in [format_message(message)] if message_type == "error"],
+        cls="message-area",
+        style="margin-top: 20px;"
+    )
+
 def GeneratedCode(active_button: str, dsl: str, architecture_id: str, simulation: bool, content: str, analysis_messages: list):
     return Div(
         CodeGenerationButtons(active_button, architecture_id, simulation),
         CodeGenerationContent(active_button, architecture_id, simulation, content),
-        Div(
-            Div(*[Div(message, cls="message info") for message in analysis_messages],
-                cls="message-area",
-                style="margin-top: 20px;"),
-            cls="message-area",
-            style="margin-top: 20px;"
-        ),
+        AnalysisMessages(analysis_messages),
         cls='right-column',
         id='code-generation-ui',
     )
