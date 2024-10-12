@@ -103,8 +103,11 @@ def TitleHeader():
     return Div(
         Grid(
             Div(
-                H1("LangGraph Architectures", style="font-family: cursive; margin-bottom: 0; display: inline;"),
-                style="display: flex; align-items: center;"
+                Span("LangGraph Architectures", 
+                     style="font-family: cursive; margin-bottom: 0; font-size: 1.4rem; color: #888; margin-right: 1rem;"),
+                Span(id="current-architecture", 
+                     style="font-weight: bold;"),
+                style="display: flex; align-items: baseline;"
             ),
             A("View README", 
               hx_get='/toggle_readme', 
@@ -256,12 +259,14 @@ def TheWholeEnchilada(architecture_id: str):
 @rt("/")
 def get():
     first_architecture_id = next(iter(architectures.keys()))
+    first_architecture_name = architectures[first_architecture_id]['name']
     return Main(
         TitleHeader(),
         Div(
             TheWholeEnchilada(first_architecture_id),
             id="main_content"
         ),
+        Script(f"document.getElementById('current-architecture').textContent = '{first_architecture_name}';"),
         cls='full-width',
     )
 
@@ -316,7 +321,18 @@ def get(arch_id: int):
     arch = architectures.get(arch_id)
     if arch is None:
         raise HTTPException(status_code=404, detail="Architecture not found")
-    return arch['graph_spec'].strip(), Examples(arch_id)
+    return (
+        arch['graph_spec'].strip(), 
+        Examples(arch_id),
+        Script(f"""
+            var currentArch = document.getElementById('current-architecture');
+            currentArch.textContent = '{arch['name']}';
+            currentArch.style.opacity = '0';
+            setTimeout(() => {{
+                currentArch.style.opacity = '1';
+            }}, 50);
+        """)
+    )   
 
 @rt("/download/{notebook_name}")
 def get(notebook_name: str):
