@@ -210,7 +210,6 @@ def gen_nodes(graph_spec):
 
 def find_conditions(node_dict):
     edges = node_dict["edges"]
-    print(edges)
     conditions = []
     for edge in edges:
         if 'true_fn' != edge["condition"]:
@@ -251,7 +250,6 @@ def gen_state(graph_spec):
 def gen_graph(graph_name, graph_spec, compile_args=None):
     if not graph_spec: return ""
     graph, start_node = parse_graph_spec(graph_spec)
-    print(graph_name, graph_spec, start_node, graph)
     nodes_added = []
 
     # Generate the graph state, node definitions, and entry point

@@ -33,7 +33,15 @@ def load_architectures() -> dict:
     architectures = {row['id']: row for row in db.t.architectures()}
     return dict(sorted(architectures.items(), key=lambda item: item[1]['name'].lower()))
 
-# Load architectures from the database
+def load_imports():
+    imports_dict = {}
+    for import_item in db.t.imports():
+        imports_dict[import_item['what']] = import_item['frm']
+    return imports_dict
+
+# Example usage of load_imports
+imports_dict = load_imports()
+print(imports_dict)
 architectures = load_architectures()
 
 BUTTON_TYPES = ['README', 'STATE', 'NODES', 'CONDITIONS', 'GRAPH', 'TOOLS', 'MODELS']
@@ -109,6 +117,7 @@ def TitleHeader():
                      style="font-weight: bold;"),
                 style="display: flex; align-items: baseline;"
             ),
+
             A("View README", 
               hx_get='/toggle_readme', 
               hx_target="#readme_content",
@@ -197,27 +206,6 @@ def format_analysis_summary(summary):
     return messages
 
 
-@rt("/get_code/{button_type}")
-def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str = "false"):
-    simulation = simulation_code == "on" and button_type != 'GRAPH'
-    code = generate_code(int(architecture_id), button_type.upper(), simulation)
-    
-    # Get the analysis for this architecture
-    analyzer = analyze_architecture_code(int(architecture_id))
-    
-    # Get the summary for this specific snippet
-    snippet_name = button_type.lower()
-    if simulation and snippet_name in ['state', 'nodes', 'conditions']:
-        snippet_name = f"{snippet_name}_simulation"
-    summary = analyzer.get_snippet_summary(snippet_name)
-    
-    analysis_messages = format_analysis_summary(summary) if summary else ["No analysis available for this snippet."]
-    
-    return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages)
-
-
-# ... existing code ...
-
 def AnalysisMessages(analysis_messages: list):
     def format_message(message: str):
         if message.startswith("Defined variables:"):
@@ -296,7 +284,11 @@ def make_form(example_id: str):
         ), 
         cls='main-container'
     )
-#aa
+
+def remove_extra_blank_lines_oneline(lines):
+    lines = lines.split("\n")
+    return "\n".join(re.sub(r'\n\s*\n', '\n\n', '\n'.join(lines)).split('\n'))
+
 @rt("/get_code/{button_type}")
 def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str = "false"):
     simulation = simulation_code == "on" and button_type != 'GRAPH'
@@ -310,8 +302,25 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
     if simulation and snippet_name in ['state', 'nodes', 'conditions']:
         snippet_name = f"{snippet_name}_simulation"
     summary = analyzer.get_snippet_summary(snippet_name)
+    print("SUMMARY", summary)
     
-    analysis_messages = format_analysis_summary(summary) if summary else ["No analysis available for this snippet."]
+    if summary:
+        defined, undefined, defined_elsewhere = summary
+        imported_vars = set(var for var in undefined if var in imports_dict)
+        direct_imports = sorted([f"import {var}" for var in imported_vars if not imports_dict[var]])
+        imports = sorted([f"from {imports_dict[var]} import {var} " for var in imported_vars if imports_dict[var]])
+        
+        # Remove imported variables from the undefined set
+        undefined = undefined - imported_vars
+        
+        # Create updated summary tuple
+        updated_summary = (defined, undefined, defined_elsewhere)
+        
+        code = "\n".join(direct_imports) + "\n\n" + "\n".join(imports) + "\n\n" + code
+        code = remove_extra_blank_lines_oneline(code.strip())
+        analysis_messages = format_analysis_summary(updated_summary)
+    else:
+        analysis_messages = ["No analysis available for this snippet."]
     
     return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages)
 
@@ -362,3 +371,10 @@ def analyze_architecture_code(architecture_id: int) -> CodeSnippetAnalyzer:
     return analyzer
 
 serve()
+
+def forder(import_list):
+    def get_from_part(import_string):
+        parts = import_string.split()
+        return parts[-1] if len(parts) > 1 else ''
+
+    return sorted(import_list, key=get_from_part)
