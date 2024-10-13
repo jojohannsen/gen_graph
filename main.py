@@ -67,13 +67,13 @@ def Examples(selected_example: str = None):
                       hx_on="htmx:afterOnLoad: function() { if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); } }",
                     ),
                 ),
-                Div(
-                    A(f"Download {sanitize_filename(arch['name'])}.ipynb", 
-                      href=f"/download/{sanitize_filename(arch['name'])}.ipynb",
-                      cls="download-notebook-link",
-                      style="font-size: 0.8em; display: none;" if arch['id'] != selected_example else "font-size: 0.8em;"),
-                    style="margin-left: 20px; margin-top: 5px;"
-                ),
+                # Div(
+                #     A(f"Download {sanitize_filename(arch['name'])}.ipynb", 
+                #       href=f"/download/{sanitize_filename(arch['name'])}.ipynb",
+                #       cls="download-notebook-link",
+                #       style="font-size: 0.8em; display: none;" if arch['id'] != selected_example else "font-size: 0.8em;"),
+                #     style="margin-left: 20px; margin-top: 5px;"
+                # ),
                 style="margin-bottom: 10px;"
               )
               for arch in architectures.values()],
@@ -167,10 +167,6 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
         'TOOLS': 'Tools',
         'MODELS': 'Models'
     }
-    debug_button = Button("Debug DSL", 
-                          hx_get='/debug_dsl',
-                          hx_swap='none',
-                          style="margin-left: 10px;")
     
     return Div(  
         *[Button(button_labels[btn], id=f"{btn.lower()}_button", 
@@ -194,7 +190,6 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
             Span("Simulation Code", style="font-size: 0.8em; font-style: italic; color: #999;"),
             style="display: flex; align-items: center;"
         ),
-        debug_button,  # Add the debug button here
         id='code-generation-buttons',
         cls='toggle-buttons',
         style="display: flex; justify-content: space-between; align-items: center;"
