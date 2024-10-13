@@ -14,6 +14,7 @@ db = database('data/gen_graph.db')
 def before(session):
     if 'sid' not in session:
         session['sid'] = str(uuid.uuid4())
+    session['title'] = "GraphDSL"  # Add this line to set the title
 
 app, rt = fast_app(
     db_file='data/gen_graph.db',
@@ -41,7 +42,6 @@ def load_imports():
 
 # Example usage of load_imports
 imports_dict = load_imports()
-print(imports_dict)
 architectures = load_architectures()
 
 BUTTON_TYPES = ['README', 'STATE', 'NODES', 'CONDITIONS', 'GRAPH', 'TOOLS', 'MODELS']
@@ -54,7 +54,7 @@ def Examples(selected_example: str = None):
     if selected_example is None:
         selected_example = next(iter(architectures.keys()))
     return Div(
-        Hidden(selected_example, id="architecture_id", hx_swap="outerHTML"),
+        Hidden(selected_example, id="architecture_id", name="architecture_id", hx_swap="outerHTML"),
         Div(
             *[Div(
                 Div(
@@ -79,7 +79,14 @@ def Examples(selected_example: str = None):
               for arch in architectures.values()],
             style="padding-top: 10px;"
         ),
-        Script("if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); }"),
+        Script("""
+        if (typeof update_editor !== 'undefined') { 
+            setTimeout(update_editor, 100); 
+        }
+        document.getElementById('dsl').addEventListener('input', function() {
+            htmx.trigger('#code-generation-ui', 'refreshContent');
+        });
+        """),
         cls="column left-column",
         id="examples-list",
         hx_swap_oob="true"
@@ -160,11 +167,18 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
         'TOOLS': 'Tools',
         'MODELS': 'Models'
     }
+    debug_button = Button("Debug DSL", 
+                          hx_get='/debug_dsl',
+                          hx_swap='none',
+                          style="margin-left: 10px;")
+    
     return Div(  
         *[Button(button_labels[btn], id=f"{btn.lower()}_button", 
                  hx_post=f'/get_code/{btn}', 
                  target_id='code-generation-ui', 
                  hx_swap='outerHTML',
+                 hx_trigger="click, refreshContent from:#code-generation-ui, editorReady",
+                 hx_include="#dsl",
                  cls=f'code-generation-button{" active" if active_button == btn else ""}{" italic" if btn in ["TOOLS", "MODELS"] else ""}')
           for btn in BUTTON_TYPES],
         Span(style="flex-grow: 1;"),
@@ -174,15 +188,19 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
                   hx_target='#code-generation-ui',
                   hx_swap='outerHTML',
                   hx_include='#dsl,#architecture_id',
+                  hx_trigger="change, refreshContent from:#code-generation-ui",
                   checked=simulation,
                   disabled=active_button == 'GRAPH'),
             Span("Simulation Code", style="font-size: 0.8em; font-style: italic; color: #999;"),
             style="display: flex; align-items: center;"
         ),
+        debug_button,  # Add the debug button here
         id='code-generation-buttons',
         cls='toggle-buttons',
         style="display: flex; justify-content: space-between; align-items: center;"
     )
+
+
 
 def CodeGenerationContent(active_button: str, architecture_id: str, simulation: bool, content: str):
     if active_button == 'README':
@@ -209,7 +227,7 @@ def format_analysis_summary(summary):
 def AnalysisMessages(analysis_messages: list):
     def format_message(message: str):
         if message.startswith("Defined variables:"):
-            return "Defined: " + message.split(": ", 1)[1], "success"
+            return "Defines: " + message.split(": ", 1)[1], "success"
         elif message.startswith("Undefined variables:"):
             return "Undefined: " + message.split(": ", 1)[1], "error"
         elif message.startswith("Variables defined elsewhere:"):
@@ -220,7 +238,7 @@ def AnalysisMessages(analysis_messages: list):
     return Div(
         *[Div(formatted_message, cls=f"message {message_type}")
           for message in analysis_messages
-          for formatted_message, message_type in [format_message(message)] if message_type == "error"],
+          for formatted_message, message_type in [format_message(message)]],# if message_type == "error"],
         cls="message-area",
         style="margin-top: 20px;"
     )
@@ -245,10 +263,11 @@ def TheWholeEnchilada(architecture_id: str):
     )
 
 @rt("/")
-def get():
+def get(session):
     first_architecture_id = next(iter(architectures.keys()))
     first_architecture_name = architectures[first_architecture_id]['name']
     return Main(
+        Title(session.get('title', 'GraphDSL')),  # Use the title from the session
         TitleHeader(),
         Div(
             TheWholeEnchilada(first_architecture_id),
@@ -271,17 +290,55 @@ def make_form(example_id: str):
             Div(Examples(example_id), cls='left-column'),
             Div(
                 Div(
-                    Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", rows=25, cls="code-editor"),
+                    Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", name="dsl", rows=25, cls="code-editor"),
                     cls='middle-column'
                 ),
                 GeneratedCode('README', initial_dsl, example_id, False, architectures[int(example_id)]['readme'], analysis_messages),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
                 Script(src="/static/script.js", defer=True),
+                Script("""
+                    document.body.addEventListener('htmx:configRequest', (event) => {
+                        ensureEditorInitialized();
+                        if (window.editor) {
+                            event.detail.parameters['dsl'] = window.editor.getValue();
+                        } else {
+                            console.log('Editor not found, falling back to textarea value');
+                            event.detail.parameters['dsl'] = document.getElementById('dsl').value;
+                        }
+                        // Include the architecture_id in the request
+                        event.detail.parameters['architecture_id'] = document.getElementById('architecture_id').value;
+                    });
+
+                    // Wait for the editor to be ready before allowing HTMX requests
+                    function waitForEditor() {
+                        if (window.editor) {
+                            htmx.trigger('#code-generation-ui', 'editorReady');
+                        } else {
+                            setTimeout(waitForEditor, 100);
+                        }
+                    }
+                    waitForEditor();
+                """),
                 style="display: flex; flex: 1;"
             ),
             cls='main-container'
         ), 
+        Script("""
+    document.body.addEventListener('htmx:beforeRequest', (event) => {
+        console.log('Before request:', event.detail);
+        console.log('DSL content:', document.getElementById('dsl').value);
+    });
+    document.body.addEventListener('htmx:configRequest', (event) => {
+        console.log('Config request:', event.detail);
+        if (window.editor) {
+            console.log('Editor content:', window.editor.getValue());
+            event.detail.parameters['dsl'] = window.editor.getValue();
+        } else {
+            console.log('Editor not found');
+        }
+    });
+"""),
         cls='main-container'
     )
 
@@ -289,9 +346,27 @@ def remove_extra_blank_lines_oneline(lines):
     lines = lines.split("\n")
     return "\n".join(re.sub(r'\n\s*\n', '\n\n', '\n'.join(lines)).split('\n'))
 
+@rt("/debug_dsl")
+def get():
+    return """
+    <script>
+        var dslContent = document.getElementById('dsl').value;
+        console.log('Current DSL content:', dslContent);
+        alert('Current DSL content (check console for full content): ' + dslContent.substring(0, 100) + '...');
+    </script>
+    """
+
 @rt("/get_code/{button_type}")
 def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str = "false"):
+    print(f"Received POST request for button_type: {button_type}")
+    print(f"DSL content received: {dsl[:100]}...")  # Print first 100 characters of DSL
+    print(f"Architecture ID: {architecture_id}")
+    print(f"Simulation code: {simulation_code}")
     simulation = simulation_code == "on" and button_type != 'GRAPH'
+    
+    # Update the architecture's graph_spec with the new DSL
+    architectures[int(architecture_id)]['graph_spec'] = dsl
+    
     code = generate_code(int(architecture_id), button_type.upper(), simulation)
     
     # Get the analysis for this architecture
@@ -318,9 +393,12 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
         
         code = "\n".join(direct_imports) + "\n\n" + "\n".join(imports) + "\n\n" + code
         code = remove_extra_blank_lines_oneline(code.strip())
+        print("DEFINES:", defined)
+        print("UNDEFINED:", undefined)
+        print("DEFINED ELSEWHERE:", defined_elsewhere)
         analysis_messages = format_analysis_summary(updated_summary)
     else:
-        analysis_messages = ["No analysis available for this snippet."]
+        analysis_messages = []
     
     return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages)
 
@@ -340,6 +418,19 @@ def get(arch_id: int):
             setTimeout(() => {{
                 currentArch.style.opacity = '1';
             }}, 50);
+            // Update the hidden input with the new architecture ID
+            document.getElementById('architecture_id').value = '{arch_id}';
+            // Update the DSL content
+            var dslElement = document.getElementById('dsl');
+            if (dslElement) {{
+                dslElement.value = `{arch['graph_spec'].strip()}`;
+                if (window.editor) {{
+                    window.editor.setValue(dslElement.value);
+                    window.editor.refresh();
+                }}
+            }}
+            // Trigger a refresh of the code generation UI
+            htmx.trigger('#code-generation-ui', 'refreshContent');
         """)
     )   
 

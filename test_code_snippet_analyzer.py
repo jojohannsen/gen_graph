@@ -73,7 +73,36 @@ obj = MyClass(10)
         code = "x = "
         assert analyzer.analyze_code(code) == (set(), set())
 
+big_snippet = '''
+async def execute_step(state: PlanExecute):
+    plan = state["plan"]
+    plan_str = "\\n".join(f"{i+1}. {step}" for i, step in enumerate(plan))
+    task = plan[0]
+
+    agent_response = await agent_executor.ainvoke(
+        {"messages": [("user", task_formatted)]}
+    )
+    return {
+        "past_steps": (task, agent_response["messages"][-1].content),
+    }
+
+async def plan_step(state: PlanExecute):
+    plan = await planner.ainvoke({"messages": [("user", state["input"])]})
+    return {"plan": plan.steps}
+
+async def replan_step(state: PlanExecute):
+    output = await replanner.ainvoke(state)
+    if isinstance(output.action, Response):
+        return {"response": output.action.response}
+    else:
+        return {"plan": output.action.steps}'''
+
 class TestSnippetManagement:
+    def test_big_snippet(self, analyzer):
+        result = analyzer.analyze_code(big_snippet)
+        pass # just testing that it runs
+        #assert analyzer.analyze_code(big_snippet) == ({'tools', 'tool_node', 'tavily_tool', 'python_repl', 'llm', 'chart_agent', 'chart_node', 'research_agent', 'research_node', 'create_agent', 'agent_node', 'tool_names', 'system_message', 'prompt', 'x', 'y', 'z', 'result', 'obj', 'MyClass', 'method', 'x'}, {'y', 'z', 'x', 'a', 'foo'})
+
     def test_add_snippet(self, analyzer):
         analyzer.add_snippet('snippet1', 'x = 5')
         assert 'snippet1' in analyzer.snippets

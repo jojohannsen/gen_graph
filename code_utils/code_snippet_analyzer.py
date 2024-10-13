@@ -9,7 +9,7 @@ class CodeSnippetAnalyzer:
     def analyze_code(self, code_snippet):
         defined_variables = set()
         used_variables = set()
-
+        code_snippet = code_snippet.replace("async ", "")
         class Visitor(ast.NodeVisitor):
             def __init__(self, builtin_names):
                 self.builtin_names = builtin_names

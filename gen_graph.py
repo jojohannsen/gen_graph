@@ -248,12 +248,13 @@ def gen_state(graph_spec):
     return mk_state(graph[start_node]["state"])
 
 def gen_graph(graph_name, graph_spec, compile_args=None):
+    print("GEN GRAPH", graph_name, graph_spec)
     if not graph_spec: return ""
     graph, start_node = parse_graph_spec(graph_spec)
     nodes_added = []
 
     # Generate the graph state, node definitions, and entry point
-    graph_setup = f"# GENERATED code, builds compiled graph '{graph_name}'\n"
+    graph_setup = f"# GENERATED code, creates compiled graph: {graph_name}\n"
 
     graph_setup += f"{graph_name} = StateGraph({graph[start_node]['state']})\n"
     if graph[start_node]["state"] == "MessageGraph":
