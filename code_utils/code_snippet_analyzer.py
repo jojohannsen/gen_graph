@@ -44,6 +44,11 @@ class CodeSnippetAnalyzer:
                     used_variables.add(node.func.id)
                 self.generic_visit(node)
 
+            def visit_ExceptHandler(self, node):
+                if node.name:
+                    defined_variables.add(node.name)
+                self.generic_visit(node)
+
         try:
             tree = ast.parse(code_snippet)
             visitor = Visitor(self.builtin_names)
