@@ -17,26 +17,19 @@ This is equivalent to the builder code, but it's easier to understand.  The equi
 2. `node_name => next_node`
 - unconditional edge between nodes
 3. ```node_name
-  condition_1 => another_node
-  condition_2 => yet_another_node
-  => default_next_node
+    condition_1 => another_node
+    condition_2 => yet_another_node
+    => default_next_node
   ```
 - conditional edges between nodes
 
 Here's an example:
-```
+  ```
 START(ModelCompare) => call_model
 
 call_model => call_openai_model, call_anthropic_model
 
 call_openai_model, call_anthropic_model => human_chooses
-
-human_chooses => handle_human_request
-
-handle_human_request
-  wants_to_quit => END
-  => call_model
-```
 
 ###### How to create an agent
 

@@ -4,12 +4,11 @@ function initializeCodeMirror() {
     CodeMirror.defineSimpleMode("myDSL", {
         start: [
             { regex: /#.*/, token: "comment", sol: true },
-            { regex: /(START)(\(.*\))(\s*=>\s*)([^\s]*)/, token: ["pale-pink", "magenta-bold", "arrow-cyan", "text-green"]},
-            { regex: /^[^\s]+/, token: "left-margin-bold-green", sol: true },
-            { regex: /([^\s]+)(\s*=>\s*)([^\s]+)/, token: ["left-margin-bold-green","text-green", "text-green"]},
-            { regex: /(\s+[^\s]+)(\s*=>\s*)([^\s]+)/, token: ["text-blue","arrow-cyan", "text-green"]},
-            { regex: /(\s+=>)(\s*[^\s]+)/, token: ["arrow-cyan", "text-green"]},
-            { regex: /(\s+=>\s*)(.*)$/, token: ["arrow-cyan", "right-arrow-light-green"] }
+            { regex: /(START)(\(.*\))(\s*=>\s*)([^\s]*)/, token: ["pale-pink", "magenta-bold", "text-green", "text-green"]},
+            { regex: /(\s+)(\w+\b\s*)(\s*=>\s*)([^\s]+.*)/, token: ["pale-pink", "text-blue", "arrow-cyan", "text-green"]},
+            { regex: /(^\b[\w+,\s]+)(\s*=>\s*)([^\s]+.*)/, token: ["left-margin-bold-green","text-green", "text-green"]},
+            { regex: /(\s+)(\s*=>\s*)([^\s]+.*)/, token: ["left-margin-bold-green","text-green", "text-green"]},
+            { regex: /(^\b\w+\b\s*$)/, token: ["left-margin-bold-green"] }
         ]
     });
 
