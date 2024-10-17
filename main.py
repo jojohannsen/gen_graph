@@ -406,16 +406,21 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
     return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages) + \
         Script("""
         console.log('Button type:', '""" + button_type + """');
-        if (document.getElementById('state-code-editor')) {
-            console.log('State editor element found');
+        if ('""" + button_type + """' === 'STATE') {
+            console.log('State tab accessed');
             if (typeof initializeStateMirror === 'function') {
-                console.log('Initializing state mirror');
+                console.log('Calling initializeStateMirror');
                 initializeStateMirror();
+                if (window.stateEditor) {
+                    console.log('State editor initialized/refreshed');
+                    console.log('Editor mode:', window.stateEditor.getMode().name);
+                    window.stateEditor.refresh();
+                } else {
+                    console.log('State editor not initialized');
+                }
             } else {
                 console.error('initializeStateMirror function not found');
             }
-        } else {
-            console.log('State editor element not found');
         }
         """)
 
