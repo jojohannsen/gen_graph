@@ -44,7 +44,7 @@ def load_imports():
 imports_dict = load_imports()
 architectures = load_architectures()
 
-BUTTON_TYPES = ['README', 'STATE', 'NODES', 'CONDITIONS', 'GRAPH', 'TOOLS', 'MODELS']
+BUTTON_TYPES = ['README', 'STATE', 'NODES', 'CONDITIONS', 'GRAPH', 'TOOLS', 'DATA', 'LLMS']
 
 def sanitize_filename(name: str) -> str:
     name = name.lower().replace(' ', '-').replace(',', '').replace('(', '').replace(')', '')
@@ -67,13 +67,6 @@ def Examples(selected_example: str = None):
                       hx_on="htmx:afterOnLoad: function() { if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); } }",
                     ),
                 ),
-                # Div(
-                #     A(f"Download {sanitize_filename(arch['name'])}.ipynb", 
-                #       href=f"/download/{sanitize_filename(arch['name'])}.ipynb",
-                #       cls="download-notebook-link",
-                #       style="font-size: 0.8em; display: none;" if arch['id'] != selected_example else "font-size: 0.8em;"),
-                #     style="margin-left: 20px; margin-top: 5px;"
-                # ),
                 style="margin-bottom: 10px;"
               )
               for arch in architectures.values()],
@@ -149,8 +142,9 @@ def generate_code(architecture_id: int, button_type: str, simulation: bool) -> s
             'STATE': gen_state,
             'NODES': gen_nodes,
             'CONDITIONS': gen_conditions,
-            'TOOLS': lambda _: "# Tools simulation not implemented",
-            'MODELS': lambda _: "# Models simulation not implemented"
+            'TOOLS': lambda _: arch['tools'].strip(),  # Display the same content in simulation mode
+            'DATA': lambda _: arch['data'].strip(),  # Display the 'data' field content
+            'LLMS': lambda _: "# LLMs simulation not implemented"
         }
         return simulation_functions[button_type](arch['graph_spec']).strip()
     else:
@@ -165,7 +159,8 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
         'CONDITIONS': 'Conditions',
         'GRAPH': 'Graph',
         'TOOLS': 'Tools',
-        'MODELS': 'Models'
+        'DATA': 'Data',  # Added this line
+        'LLMS': 'LLMs'
     }
     
     return Div(  
@@ -175,7 +170,7 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
                  hx_swap='outerHTML',
                  hx_trigger="click, refreshContent from:#code-generation-ui, editorReady",
                  hx_include="#dsl",
-                 cls=f'code-generation-button{" active" if active_button == btn else ""}{" italic" if btn in ["TOOLS", "MODELS"] else ""}')
+                 cls=f'code-generation-button{" active" if active_button == btn else ""}{" italic" if btn in ["TOOLS", "DATA", "LLMS"] else ""}')
           for btn in BUTTON_TYPES],
         Span(style="flex-grow: 1;"),
         Label(
@@ -353,10 +348,6 @@ def get():
 
 @rt("/get_code/{button_type}")
 def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str = "false"):
-    print(f"Received POST request for button_type: {button_type}")
-    print(f"DSL content received: {dsl[:100]}...")  # Print first 100 characters of DSL
-    print(f"Architecture ID: {architecture_id}")
-    print(f"Simulation code: {simulation_code}")
     simulation = simulation_code == "on" and button_type != 'GRAPH'
     
     # Update the architecture's graph_spec with the new DSL
@@ -372,7 +363,6 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
     if simulation and snippet_name in ['state', 'nodes', 'conditions']:
         snippet_name = f"{snippet_name}_simulation"
     summary = analyzer.get_snippet_summary(snippet_name)
-    print("SUMMARY", summary)
     
     if summary:
         defined, undefined, defined_elsewhere = summary
@@ -388,9 +378,6 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
         
         code = "\n".join(direct_imports) + "\n\n" + "\n".join(imports) + "\n\n" + code
         code = remove_extra_blank_lines_oneline(code.strip())
-        print("DEFINES:", defined)
-        print("UNDEFINED:", undefined)
-        print("DEFINED ELSEWHERE:", defined_elsewhere)
         analysis_messages = format_analysis_summary(updated_summary)
     else:
         analysis_messages = []
@@ -424,8 +411,16 @@ def get(arch_id: int):
                     window.editor.refresh();
                 }}
             }}
-            // Trigger a refresh of the code generation UI
-            htmx.trigger('#code-generation-ui', 'refreshContent');
+            // Trigger a refresh of only the README content
+            htmx.ajax('POST', '/get_code/README', {{  // Changed from 'GET' to 'POST'
+                target: '#code-generation-ui',
+                swap: 'outerHTML',
+                values: {{
+                    'dsl': dslElement.value,
+                    'architecture_id': '{arch_id}',
+                    'simulation_code': document.getElementById('simulation_code_checkbox').checked ? 'on' : 'off'
+                }}
+            }});
         """)
     )   
 
@@ -442,7 +437,7 @@ def analyze_architecture_code(architecture_id: int) -> CodeSnippetAnalyzer:
     analyzer = CodeSnippetAnalyzer()
 
     # Analyze each code snippet
-    for field in ['state', 'nodes', 'conditions', 'models', 'tools']:
+    for field in ['state', 'nodes', 'conditions', 'tools', 'data', 'llms']:
         code = arch.get(field, '').strip()
         if code:
             analyzer.add_snippet(field, code)

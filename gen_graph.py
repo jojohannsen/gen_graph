@@ -196,10 +196,10 @@ def mk_conditional_edges(graph_name, node_name, node_dict):
 def true_fn(state):
     return True
 
-def gen_node(node_name):
+def gen_node(node_name, state_type):
     return f"""
-def {node_name}(state):
-    return {{ 'states': ['{node_name}'], 'last_state': '{node_name}' }}
+def {node_name}(state: {state_type}):
+    return {{ 'states': state['states'] + ['{node_name}'], 'last_state': '{node_name}' }}
 """
 
 def gen_nodes(graph_spec):
@@ -248,7 +248,6 @@ def gen_state(graph_spec):
     return mk_state(graph[start_node]["state"])
 
 def gen_graph(graph_name, graph_spec, compile_args=None):
-    print("GEN GRAPH", graph_name, graph_spec)
     if not graph_spec: return ""
     graph, start_node = parse_graph_spec(graph_spec)
     nodes_added = []
@@ -256,9 +255,16 @@ def gen_graph(graph_name, graph_spec, compile_args=None):
     # Generate the graph state, node definitions, and entry point
     graph_setup = f"# GENERATED code, creates compiled graph: {graph_name}\n"
 
-    graph_setup += f"{graph_name} = StateGraph({graph[start_node]['state']})\n"
-    if graph[start_node]["state"] == "MessageGraph":
+    state_type = graph[start_node]['state']
+    graph_setup += f"{graph_name} = StateGraph({state_type})\n"
+    if state_type == "MessageGraph":
         graph_setup = f"{graph_name} = MessageGraph()\n"
+
+    # Generate node functions
+    for node_name in graph:
+        if node_name != "START":
+            graph_setup += gen_node(node_name, state_type)
+
     for node_name in graph:
         if node_name != "START":
             if "," in node_name:
