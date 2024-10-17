@@ -1,4 +1,5 @@
 let editor;
+let stateEditor;
 
 function initializeCodeMirror() {
     CodeMirror.defineSimpleMode("myDSL", {
@@ -30,6 +31,30 @@ function initializeCodeMirror() {
     }
 }
 
+function initializeStateMirror() {
+    const stateElement = document.getElementById('state-code-editor');
+    if (stateElement && !stateEditor) {
+        console.log("Creating state editor");
+        stateEditor = CodeMirror.fromTextArea(stateElement, {
+            mode: "python",
+            lineNumbers: true,
+            theme: "default",
+            viewportMargin: Infinity,
+            lineWrapping: true,
+            minHeight: "300px",  // Set a minimum height
+        });
+
+        stateEditor.setSize(null, "auto");  // Set height to auto
+
+        stateEditor.on('change', function() {
+            stateElement.value = stateEditor.getValue();
+            stateEditor.setSize(null, "auto");  // Adjust height on change
+        });
+
+        window.stateEditor = stateEditor;  // Make the state editor globally accessible
+    }
+}
+
 function ensureEditorInitialized() {
     if (!window.editor) {
         initializeCodeMirror();
@@ -49,6 +74,15 @@ function update_editor() {
         console.error("Failed to initialize editor");
     }
     
+    // Initialize or refresh the state editor if it exists
+    if (document.getElementById('state-code-editor')) {
+        initializeStateMirror();
+        if (window.stateEditor) {
+            window.stateEditor.refresh();
+            window.stateEditor.setSize(null, "auto");  // Adjust height
+        }
+    }
+    
     // Trigger a refresh of the code generation UI
     htmx.trigger('#code-generation-ui', 'refreshContent');
 }
@@ -63,6 +97,7 @@ document.body.addEventListener('htmx:afterSwap', update_editor);
 document.body.addEventListener('htmx:afterSettle', function(event) {
     ensureEditorInitialized();
     if (window.editor) window.editor.refresh();
+    if (window.stateEditor) window.stateEditor.refresh();
 });
 
 // Add this function to update the selected example in the UI

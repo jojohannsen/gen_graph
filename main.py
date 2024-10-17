@@ -16,6 +16,7 @@ def before(session):
         session['sid'] = str(uuid.uuid4())
     session['title'] = "GraphDSL"  # Add this line to set the title
 
+
 app, rt = fast_app(
     db_file='data/gen_graph.db',
     hdrs=[
@@ -25,6 +26,7 @@ app, rt = fast_app(
         Link(rel="stylesheet", href="/static/styles.css"),
         Link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css"),
         Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
+        Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"),  # Add this line
     ],
     before=before  
 )
@@ -191,12 +193,16 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
     )
 
 
-
 def CodeGenerationContent(active_button: str, architecture_id: str, simulation: bool, content: str):
     if active_button == 'README':
         return Div(Div(content, cls='marked', style='padding: 20px; text-align: left;'),
                    id="architecture-readme", 
                    cls=f'tab-content active')
+    elif active_button == 'STATE':
+        return Div(
+            Textarea(content, id="state-code-editor", name="state-code-editor", cls="code-editor"),
+            cls=f'tab-content active'
+        )
     else:
         return Div(Pre(Code(content), id=f"{active_button.lower()}-code"),
                    cls=f'tab-content active')
@@ -382,8 +388,16 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
     else:
         analysis_messages = []
     
-    return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages)
-
+    return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages) + \
+        Script("""
+        if (document.getElementById('state-code-editor')) {
+            if (typeof initializeStateMirror === 'function') {
+                initializeStateMirror();
+            } else {
+                console.error('initializeStateMirror function not found');
+            }
+        }
+        """)
 
 @rt("/architecture/{arch_id}")
 def get(arch_id: int):
@@ -452,10 +466,3 @@ def analyze_architecture_code(architecture_id: int) -> CodeSnippetAnalyzer:
     return analyzer
 
 serve()
-
-def forder(import_list):
-    def get_from_part(import_string):
-        parts = import_string.split()
-        return parts[-1] if len(parts) > 1 else ''
-
-    return sorted(import_list, key=get_from_part)
