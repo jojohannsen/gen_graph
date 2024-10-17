@@ -25,12 +25,27 @@ app, rt = fast_app(
         HighlightJS(),
         Link(rel="stylesheet", href="/static/styles.css"),
         Link(rel="stylesheet", href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css"),
-        Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
-        Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"),  # Add this line
+        Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"),
+        Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"),
+        Script("""
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('CodeMirror version:', CodeMirror.version);
+            console.log('Python mode loaded:', typeof CodeMirror.modes.python !== 'undefined');
+            if (typeof CodeMirror.modes.python === 'undefined') {
+                console.error('Python mode not loaded. Attempting to load it manually.');
+                var script = document.createElement('script');
+                script.src = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js";
+                document.head.appendChild(script);
+                script.onload = function() {
+                    console.log('Python mode loaded manually:', typeof CodeMirror.modes.python !== 'undefined');
+                };
+            }
+        });
+        """),
+        Script(src="/static/script.js", defer=True),
     ],
     before=before  
 )
-
 # Function to load all architectures from the database
 def load_architectures() -> dict:
     architectures = {row['id']: row for row in db.t.architectures()}
@@ -390,14 +405,20 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
     
     return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages) + \
         Script("""
+        console.log('Button type:', '""" + button_type + """');
         if (document.getElementById('state-code-editor')) {
+            console.log('State editor element found');
             if (typeof initializeStateMirror === 'function') {
+                console.log('Initializing state mirror');
                 initializeStateMirror();
             } else {
                 console.error('initializeStateMirror function not found');
             }
+        } else {
+            console.log('State editor element not found');
         }
         """)
+
 
 @rt("/architecture/{arch_id}")
 def get(arch_id: int):

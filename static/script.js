@@ -35,14 +35,26 @@ function initializeStateMirror() {
     const stateElement = document.getElementById('state-code-editor');
     if (stateElement && !stateEditor) {
         console.log("Creating state editor");
+        console.log("CodeMirror Python mode available:", typeof CodeMirror.modes.python !== 'undefined');
+        
+        if (typeof CodeMirror.modes.python === 'undefined') {
+            console.error('Python mode not available. Falling back to default mode.');
+        }
+        
         stateEditor = CodeMirror.fromTextArea(stateElement, {
-            mode: "python",
+            mode: typeof CodeMirror.modes.python !== 'undefined' ? "python" : "text",
             lineNumbers: true,
             theme: "default",
             viewportMargin: Infinity,
             lineWrapping: true,
-            minHeight: "300px",  // Set a minimum height
+            minHeight: "300px",
+            indentUnit: 4,
+            tabSize: 4,
+            indentWithTabs: false,
+            autofocus: true
         });
+
+        console.log("State editor mode:", stateEditor.getMode().name);
 
         stateEditor.setSize(null, "auto");  // Set height to auto
 
@@ -55,6 +67,8 @@ function initializeStateMirror() {
     }
 }
 
+// Make sure initializeStateMirror is globally accessible
+window.initializeStateMirror = initializeStateMirror;
 function ensureEditorInitialized() {
     if (!window.editor) {
         initializeCodeMirror();
