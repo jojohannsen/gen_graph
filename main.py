@@ -168,7 +168,7 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
                  hx_post=f'/get_code/{btn}', 
                  target_id='code-generation-ui', 
                  hx_swap='outerHTML',
-                 hx_trigger="click, refreshContent from:#code-generation-ui, editorReady",
+                 hx_trigger="click", # why were these here??, refreshContent from:#code-generation-ui, editorReady",
                  hx_include="#dsl",
                  cls=f'code-generation-button{" active" if active_button == btn else ""}{" italic" if btn in ["TOOLS", "DATA", "LLMS"] else ""}')
           for btn in BUTTON_TYPES],
