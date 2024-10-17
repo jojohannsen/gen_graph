@@ -220,18 +220,19 @@ def find_conditions(node_dict):
 def random_one_or_zero():
     return random.choice([False, True])
 
-def gen_condition(condition):
+def gen_condition(condition, state_type):
     return f"""
-def {condition}(state) -> bool:
+def {condition}(state: {state_type}) -> bool:
     return random_one_or_zero()
 """
 
 def gen_conditions(graph_spec):
     graph, start_node = parse_graph_spec(graph_spec)
     conditions = []
+    state_type = graph[start_node]["state"]
     for node_name, node_dict in graph.items():
         for condition in find_conditions(node_dict):
-            conditions.append(gen_condition(condition))
+            conditions.append(gen_condition(condition, state_type))
     result = "# GENERATED CODE -- used for graph simulation mode"
     return result + "\n".join(conditions) if conditions else "# This graph has no conditional edges"
 
