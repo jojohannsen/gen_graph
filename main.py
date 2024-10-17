@@ -208,21 +208,6 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
     )
 
 
-def CodeGenerationContent(active_button: str, architecture_id: str, simulation: bool, content: str):
-    if active_button == 'README':
-        return Div(Div(content, cls='marked', style='padding: 20px; text-align: left;'),
-                   id="architecture-readme", 
-                   cls=f'tab-content active')
-    elif active_button == 'STATE':
-        return Div(
-            Textarea(content, id="state-code-editor", name="state-code-editor", cls="code-editor"),
-            cls=f'tab-content active'
-        )
-    else:
-        return Div(Pre(Code(content), id=f"{active_button.lower()}-code"),
-                   cls=f'tab-content active')
-
-
 def format_analysis_summary(summary):
     defined, undefined, defined_elsewhere = summary
     messages = []
@@ -288,6 +273,26 @@ def get(session):
         cls='full-width',
     )
 
+
+
+def remove_extra_blank_lines_oneline(lines):
+    lines = lines.split("\n")
+    return "\n".join(re.sub(r'\n\s*\n', '\n\n', '\n'.join(lines)).split('\n'))
+
+@rt("/debug_dsl")
+def get():
+    return """
+    <script>
+        var dslContent = document.getElementById('dsl').value;
+        console.log('Current DSL content:', dslContent);
+        alert('Current DSL content (check console for full content): ' + dslContent.substring(0, 100) + '...');
+    </script>
+    """
+
+# ... (previous imports and code remain the same)
+
+# ... (previous imports and code remain the same)
+
 def make_form(example_id: str):
     initial_dsl = architectures[int(example_id)]['graph_spec']
     
@@ -335,37 +340,22 @@ def make_form(example_id: str):
             ),
             cls='main-container'
         ), 
-        Script("""
-    document.body.addEventListener('htmx:beforeRequest', (event) => {
-        console.log('Before request:', event.detail);
-        console.log('DSL content:', document.getElementById('dsl').value);
-    });
-    document.body.addEventListener('htmx:configRequest', (event) => {
-        console.log('Config request:', event.detail);
-        if (window.editor) {
-            console.log('Editor content:', window.editor.getValue());
-            event.detail.parameters['dsl'] = window.editor.getValue();
-        } else {
-            console.log('Editor not found');
-        }
-    });
-"""),
         cls='main-container'
     )
 
-def remove_extra_blank_lines_oneline(lines):
-    lines = lines.split("\n")
-    return "\n".join(re.sub(r'\n\s*\n', '\n\n', '\n'.join(lines)).split('\n'))
-
-@rt("/debug_dsl")
-def get():
-    return """
-    <script>
-        var dslContent = document.getElementById('dsl').value;
-        console.log('Current DSL content:', dslContent);
-        alert('Current DSL content (check console for full content): ' + dslContent.substring(0, 100) + '...');
-    </script>
-    """
+def CodeGenerationContent(active_button: str, architecture_id: str, simulation: bool, content: str):
+    if active_button == 'README':
+        return Div(Div(content, cls='marked', style='padding: 20px; text-align: left;'),
+                   id="architecture-readme", 
+                   cls=f'tab-content active')
+    elif active_button in ['STATE', 'NODES', 'CONDITIONS', 'TOOLS', 'DATA', 'LLMS']:
+        return Div(
+            Textarea(content, id=f"{active_button.lower()}-code-editor", name=f"{active_button.lower()}-code-editor", cls="code-editor"),
+            cls=f'tab-content active'
+        )
+    else:
+        return Div(Pre(Code(content), id=f"{active_button.lower()}-code"),
+                   cls=f'tab-content active')
 
 @rt("/get_code/{button_type}")
 def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str = "false"):
@@ -404,26 +394,18 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
         analysis_messages = []
     
     return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages) + \
-        Script("""
-        console.log('Button type:', '""" + button_type + """');
-        if ('""" + button_type + """' === 'STATE') {
-            console.log('State tab accessed');
-            if (typeof initializeStateMirror === 'function') {
-                console.log('Calling initializeStateMirror');
-                initializeStateMirror();
-                if (window.stateEditor) {
-                    console.log('State editor initialized/refreshed');
-                    console.log('Editor mode:', window.stateEditor.getMode().name);
-                    window.stateEditor.refresh();
-                } else {
-                    console.log('State editor not initialized');
-                }
-            } else {
-                console.error('initializeStateMirror function not found');
-            }
-        }
+        Script(f"""
+        console.log('Button type:', '{button_type}');
+        if ('{button_type}' in ['STATE', 'NODES', 'CONDITIONS', 'TOOLS', 'DATA', 'LLMS']) {{
+            console.log('{button_type} tab accessed');
+            if (typeof initializeCodeMirror === 'function') {{
+                console.log('Calling initializeCodeMirror for {button_type}');
+                initializeCodeMirror('{button_type.lower()}');
+            }} else {{
+                console.error('initializeCodeMirror function not found');
+            }}
+        }}
         """)
-
 
 @rt("/architecture/{arch_id}")
 def get(arch_id: int):
