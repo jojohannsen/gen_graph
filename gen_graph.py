@@ -198,7 +198,7 @@ def true_fn(state):
 
 def gen_node(node_name, state_type):
     return f"""
-def {node_name}(state: {state_type}):
+def {node_name}(state: {state_type}, *, config:Optional[RunnableConfig] = None):
     return {{ 'states': state['states'] + ['{node_name}'], 'last_state': '{node_name}' }}
 """
 
