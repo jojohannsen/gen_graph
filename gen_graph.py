@@ -202,11 +202,13 @@ def {node_name}(state: {state_type}, *, config:Optional[RunnableConfig] = None):
     return {{ 'states': state['states'] + ['{node_name}'], 'last_state': '{node_name}' }}
 """
 
-def gen_nodes(graph_spec):
-    graph, start_node = parse_graph_spec(graph_spec)
-    result = "# GENERATED CODE -- useful only for simulation mode"  # newline at start of gen_node
-    nodes = [gen_node(node_name) for node_name in graph if node_name != "START"]
-    return result + "\n".join(nodes)
+def gen_nodes(graph):
+    nodes = []
+    for node_name, node_data in graph.items():
+        if node_name != "START":
+            state_type = node_data.get('state_type', 'default')
+            nodes.append(gen_node(node_name, state_type))
+    return "\n".join(nodes)
 
 def find_conditions(node_dict):
     edges = node_dict["edges"]
@@ -260,11 +262,6 @@ def gen_graph(graph_name, graph_spec, compile_args=None):
     graph_setup += f"{graph_name} = StateGraph({state_type})\n"
     if state_type == "MessageGraph":
         graph_setup = f"{graph_name} = MessageGraph()\n"
-
-    # Generate node functions
-    for node_name in graph:
-        if node_name != "START":
-            graph_setup += gen_node(node_name, state_type)
 
     for node_name in graph:
         if node_name != "START":

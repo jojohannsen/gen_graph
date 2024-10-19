@@ -28,6 +28,9 @@ app, rt = fast_app(
         Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"),
         Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"),
         Script("""
+        var BASE_URL = window.location.origin;
+        """),
+        Script("""
         document.addEventListener('DOMContentLoaded', function() {
             console.log('CodeMirror version:', CodeMirror.version);
             console.log('Python mode loaded:', typeof CodeMirror.modes.python !== 'undefined');
@@ -152,6 +155,8 @@ def mk_name(name:str):
 
 def generate_code(architecture_id: int, button_type: str, simulation: bool) -> str:
     arch = architectures[architecture_id]
+    if button_type == 'README':
+        return arch['readme'].strip()
     if button_type == 'GRAPH':
         return gen_graph(mk_name(arch['name']), arch['graph_spec']).strip()
     elif simulation:
@@ -407,44 +412,58 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
         }}
         """)
 
+
 @rt("/architecture/{arch_id}")
-def get(arch_id: int):
+def get(arch_id: int, request: Request):
     arch = architectures.get(arch_id)
     if arch is None:
         raise HTTPException(status_code=404, detail="Architecture not found")
-    return (
-        arch['graph_spec'].strip(), 
-        Examples(arch_id),
-        Script(f"""
-            var currentArch = document.getElementById('current-architecture');
-            currentArch.textContent = '{arch['name']}';
-            currentArch.style.opacity = '0';
-            setTimeout(() => {{
-                currentArch.style.opacity = '1';
-            }}, 50);
-            // Update the hidden input with the new architecture ID
-            document.getElementById('architecture_id').value = '{arch_id}';
-            // Update the DSL content
-            var dslElement = document.getElementById('dsl');
-            if (dslElement) {{
-                dslElement.value = `{arch['graph_spec'].strip()}`;
-                if (window.editor) {{
-                    window.editor.setValue(dslElement.value);
-                    window.editor.refresh();
+    
+    # Check if it's an HTMX request
+    if "HX-Request" in request.headers:
+        # This is a partial update request
+        return (
+            arch['graph_spec'].strip(), 
+            Examples(arch_id),
+            Script(f"""
+                var currentArch = document.getElementById('current-architecture');
+                currentArch.textContent = '{arch['name']}';
+                currentArch.style.opacity = '0';
+                setTimeout(() => {{
+                    currentArch.style.opacity = '1';
+                }}, 50);
+                document.getElementById('architecture_id').value = '{arch_id}';
+                var dslElement = document.getElementById('dsl');
+                if (dslElement) {{
+                    dslElement.value = `{arch['graph_spec'].strip()}`;
+                    if (window.editor) {{
+                        window.editor.setValue(dslElement.value);
+                        window.editor.refresh();
+                    }}
                 }}
-            }}
-            // Trigger a refresh of only the README content
-            htmx.ajax('POST', '/get_code/README', {{  // Changed from 'GET' to 'POST'
-                target: '#code-generation-ui',
-                swap: 'outerHTML',
-                values: {{
-                    'dsl': dslElement.value,
-                    'architecture_id': '{arch_id}',
-                    'simulation_code': document.getElementById('simulation_code_checkbox').checked ? 'on' : 'off'
-                }}
-            }});
-        """)
-    )   
+                htmx.ajax('POST', '/get_code/README', {{
+                    target: '#code-generation-ui',
+                    swap: 'outerHTML',
+                    values: {{
+                        'dsl': dslElement.value,
+                        'architecture_id': '{arch_id}',
+                        'simulation_code': document.getElementById('simulation_code_checkbox').checked ? 'on' : 'off'
+                    }}
+                }});
+            """)
+        )
+    else:
+        # This is a full page request
+        return Main(
+            Title(f"LangGraph Architectures - {arch['name']}"),
+            TitleHeader(),
+            Div(
+                TheWholeEnchilada(arch_id),
+                id="main_content"
+            ),
+            Script(f"document.getElementById('current-architecture').textContent = '{arch['name']}';"),
+            cls='full-width',
+        )
 
 @rt("/download/{notebook_name}")
 def get(notebook_name: str):
