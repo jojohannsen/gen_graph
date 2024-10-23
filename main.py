@@ -51,7 +51,7 @@ app, rt = fast_app(
 )
 # Function to load all architectures from the database
 def load_architectures() -> dict:
-    architectures = {row['id']: row for row in db.t.architectures()}
+    architectures = {row['id']: row for row in db.t.arch()}
     return dict(sorted(architectures.items(), key=lambda item: item[1]['name'].lower()))
 
 def load_imports():
@@ -175,7 +175,7 @@ def generate_code(architecture_id: int, button_type: str, simulation: bool) -> s
 
 def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: bool):
     button_labels = {
-        'README': 'Readme',
+        'README': 'README',
         'STATE': 'State',
         'NODES': 'Nodes',
         'CONDITIONS': 'Conditions',
