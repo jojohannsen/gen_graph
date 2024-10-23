@@ -398,19 +398,20 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
     else:
         analysis_messages = []
     
-    return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages) + \
-        Script(f"""
-        console.log('Button type:', '{button_type}');
-        if ('{button_type}' in ['STATE', 'NODES', 'CONDITIONS', 'TOOLS', 'DATA', 'LLMS']) {{
-            console.log('{button_type} tab accessed');
-            if (typeof initializeCodeMirror === 'function') {{
-                console.log('Calling initializeCodeMirror for {button_type}');
-                initializeCodeMirror('{button_type.lower()}');
-            }} else {{
-                console.error('initializeCodeMirror function not found');
-            }}
-        }}
-        """)
+    return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages)
+    # return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages) + \
+    #     Script(f"""
+    #     console.log('Button type:', '{button_type}');
+    #     if ('{button_type}' in ['STATE', 'NODES', 'CONDITIONS', 'TOOLS', 'DATA', 'LLMS']) {{
+    #         console.log('{button_type} tab accessed');
+    #         if (typeof initializeCodeMirror === 'function') {{
+    #             console.log('Calling initializeCodeMirror for {button_type}');
+    #             initializeCodeMirror('{button_type.lower()}');
+    #         }} else {{
+    #             console.error('initializeCodeMirror function not found');
+    #         }}
+    #     }}
+    #     """)
 
 
 @rt("/architecture/{arch_id}")
