@@ -1,6 +1,6 @@
 from fasthtml.common import *
 from fastlite import database
-from gen_graph import gen_graph, gen_nodes, gen_conditions, gen_state
+from langgraph_codegen import gen_graph, gen_nodes, gen_conditions, gen_state
 from code_utils.code_snippet_analyzer import CodeSnippetAnalyzer
 import uuid
 import re
@@ -399,19 +399,6 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
         analysis_messages = []
     
     return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages)
-    # return GeneratedCode(button_type.upper(), dsl, architecture_id, simulation, code, analysis_messages) + \
-    #     Script(f"""
-    #     console.log('Button type:', '{button_type}');
-    #     if ('{button_type}' in ['STATE', 'NODES', 'CONDITIONS', 'TOOLS', 'DATA', 'LLMS']) {{
-    #         console.log('{button_type} tab accessed');
-    #         if (typeof initializeCodeMirror === 'function') {{
-    #             console.log('Calling initializeCodeMirror for {button_type}');
-    #             initializeCodeMirror('{button_type.lower()}');
-    #         }} else {{
-    #             console.error('initializeCodeMirror function not found');
-    #         }}
-    #     }}
-    #     """)
 
 
 @rt("/architecture/{arch_id}")
