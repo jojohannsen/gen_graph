@@ -439,7 +439,7 @@ def get(arch_id: int, request: Request):
                     }}
                 }});
             """)
-        )
+        ), HtmxResponseHeaders(push_url=f"/graph/{sanitize_filename(arch['name'])}")
     else:
         # This is a full page request
         return Main(
@@ -479,5 +479,60 @@ def analyze_architecture_code(architecture_id: int) -> CodeSnippetAnalyzer:
     analyzer.analyze_all_snippets()
 
     return analyzer
+
+@rt("/graph/{architecture_name}")
+def get(architecture_name: str, request: Request):
+    # Find the architecture by name
+    arch = next((a for a in architectures.values() if sanitize_filename(a['name']) == architecture_name), None)
+    if arch is None:
+        raise HTTPException(status_code=404, detail="Architecture not found")
+    
+    arch_id = arch['id']
+    
+    # Check if it's an HTMX request
+    if "HX-Request" in request.headers:
+        # This is a partial update request
+        return (
+            arch['graph_spec'].strip(), 
+            Examples(arch_id),
+            Script(f"""
+                var currentArch = document.getElementById('current-architecture');
+                currentArch.textContent = '{arch['name']}';
+                currentArch.style.opacity = '0';
+                setTimeout(() => {{
+                    currentArch.style.opacity = '1';
+                }}, 50);
+                document.getElementById('architecture_id').value = '{arch_id}';
+                var dslElement = document.getElementById('dsl');
+                if (dslElement) {{
+                    dslElement.value = `{arch['graph_spec'].strip()}`;
+                    if (window.editor) {{
+                        window.editor.setValue(dslElement.value);
+                        window.editor.refresh();
+                    }}
+                }}
+                htmx.ajax('POST', '/get_code/README', {{
+                    target: '#code-generation-ui',
+                    swap: 'outerHTML',
+                    values: {{
+                        'dsl': dslElement.value,
+                        'architecture_id': '{arch_id}',
+                        'simulation_code': document.getElementById('simulation_code_checkbox').checked ? 'on' : 'off'
+                    }}
+                }});
+            """)
+        )
+    else:
+        # This is a full page request
+        return Main(
+            Title(f"LangGraph Architectures - {arch['name']}"),
+            TitleHeader(),
+            Div(
+                TheWholeEnchilada(arch_id),
+                id="main_content"
+            ),
+            Script(f"document.getElementById('current-architecture').textContent = '{arch['name']}';"),
+            cls='full-width',
+        ), HtmxResponseHeaders(push_url=f"/graph/{architecture_name}")
 
 serve()
