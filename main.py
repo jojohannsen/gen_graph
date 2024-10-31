@@ -70,7 +70,7 @@ def sanitize_filename(name: str) -> str:
     name = name.lower().replace(' ', '-').replace(',', '').replace('(', '').replace(')', '')
     return re.sub(r'[^a-z0-9-]', '', name)
 
-def Examples(selected_example: str = None):
+def GraphArchitecture(selected_example: str = None):
     if selected_example is None:
         selected_example = next(iter(architectures.keys()))
     return Div(
@@ -294,10 +294,6 @@ def get():
     </script>
     """
 
-# ... (previous imports and code remain the same)
-
-# ... (previous imports and code remain the same)
-
 def make_form(example_id: str):
     initial_dsl = architectures[int(example_id)]['graph_spec']
     
@@ -308,7 +304,7 @@ def make_form(example_id: str):
     
     return Form()(
         Div(
-            Div(Examples(example_id), cls='left-column'),
+            Div(GraphArchitecture(example_id), cls='left-column'),
             Div(
                 Div(
                     Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", name="dsl", rows=25, cls="code-editor"),
@@ -365,6 +361,7 @@ def CodeGenerationContent(active_button: str, architecture_id: str, simulation: 
 @rt("/get_code/{button_type}")
 def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str = "false"):
     simulation = simulation_code == "on" and button_type != 'GRAPH'
+    skip_imports = button_type == 'GRAPH'
     
     # Update the architecture's graph_spec with the new DSL
     architectures[int(architecture_id)]['graph_spec'] = dsl
@@ -392,7 +389,8 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
         # Create updated summary tuple
         updated_summary = (defined, undefined, defined_elsewhere)
         
-        code = "\n".join(direct_imports) + "\n\n" + "\n".join(imports) + "\n\n" + code
+        if not skip_imports:
+            code = "\n".join(direct_imports) + "\n\n" + "\n".join(imports) + "\n\n" + code
         code = remove_extra_blank_lines_oneline(code.strip())
         analysis_messages = format_analysis_summary(updated_summary)
     else:
@@ -412,7 +410,7 @@ def get(arch_id: int, request: Request):
         # This is a partial update request
         return (
             arch['graph_spec'].strip(), 
-            Examples(arch_id),
+            GraphArchitecture(arch_id),
             Script(f"""
                 var currentArch = document.getElementById('current-architecture');
                 currentArch.textContent = '{arch['name']}';
@@ -453,9 +451,6 @@ def get(arch_id: int, request: Request):
             cls='full-width',
         )
 
-@rt("/download/{notebook_name}")
-def get(notebook_name: str):
-    return PlainTextResponse(f"This would be the notebook for {notebook_name}")
 
 def analyze_architecture_code(architecture_id: int) -> CodeSnippetAnalyzer:
     arch = architectures[architecture_id]
@@ -494,7 +489,7 @@ def get(architecture_name: str, request: Request):
         # This is a partial update request
         return (
             arch['graph_spec'].strip(), 
-            Examples(arch_id),
+            GraphArchitecture(arch_id),
             Script(f"""
                 var currentArch = document.getElementById('current-architecture');
                 currentArch.textContent = '{arch['name']}';
