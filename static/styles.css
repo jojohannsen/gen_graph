@@ -48,7 +48,7 @@
     color: #006d77; /* Dark teal color */
 }
 .example-link:not(.selected):hover { 
-    background-color: #716363; 
+    background-color: #beb0b0; 
 }
 .header {
     display: flex;
@@ -62,15 +62,7 @@
 #current-architecture {
     transition: all 0.3s ease;
 }
-/* .header { 
-    background-color: #e0f2f1; 
-    padding: 5px 10px; 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center;
-    height: 50px;
-    margin: 0;
-} */
+
 .header h3 { 
     margin: 0; 
     font-family: cursive;
@@ -321,3 +313,13 @@ input[type="submit"]:hover {
 .cm-s-default .cm-quote {color: #090;}
 .cm-s-default .cm-hr {color: #999;}
 .cm-s-default .cm-link {color: #00c;}
+
+.category-summary {
+    padding-left: 16px;
+    font-family: cursive;
+    color: lightslategray;
+}
+
+:root {
+    --pico-spacing: 10px; /* Set your preferred value */
+}

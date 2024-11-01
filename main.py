@@ -73,23 +73,37 @@ def sanitize_filename(name: str) -> str:
 def GraphArchitecture(selected_example: str = None):
     if selected_example is None:
         selected_example = next(iter(architectures.keys()))
+
+    # Group architectures by category (you'll need to add a 'category' field to your architectures)
+    grouped_architectures = {}
+    for arch in architectures.values():
+        category = arch.get('category', 'Uncategorized')  # Default category if none specified
+        if category not in grouped_architectures:
+            grouped_architectures[category] = []
+        grouped_architectures[category].append(arch)
+
     return Div(
         Hidden(selected_example, id="architecture_id", name="architecture_id", hx_swap="outerHTML"),
         Div(
-            *[Div(
+            *[Details(
+                Summary(category, role="contentinfo", cls="category-summary outline secondary"),
                 Div(
-                    A(arch['name'], 
-                      id=f"example-link-{sanitize_filename(arch['name'])}",
-                      cls=f"example-link{' selected' if arch['id'] == selected_example else ''}", 
-                      hx_get=f"/architecture/{arch['id']}", 
-                      hx_target="#dsl",
-                      hx_trigger="click, keyup[key=='Enter']",
-                      hx_on="htmx:afterOnLoad: function() { if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); } }",
-                    ),
+                    *[Div(
+                        A(arch['name'],
+                          id=f"example-link-{sanitize_filename(arch['name'])}",
+                          cls=f"example-link{' selected' if arch['id'] == selected_example else ''}",
+                          hx_get=f"/architecture/{arch['id']}",
+                          hx_target="#dsl",
+                          hx_trigger="click, keyup[key=='Enter']",
+                          hx_on="htmx:afterOnLoad: function() { if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); } }",
+                        ),
+                        #style="margin-bottom: 10px;"
+                    ) for arch in architectures],
+                    cls="category-content",
                 ),
-                style="margin-bottom: 10px;"
-              )
-              for arch in architectures.values()],
+                cls="architecture-category",
+                open="open"  # Makes the section expanded by default
+            ) for category, architectures in grouped_architectures.items()],
             style="padding-top: 10px;"
         ),
         Script("""
@@ -170,7 +184,11 @@ def generate_code(architecture_id: int, button_type: str, simulation: bool) -> s
         }
         return simulation_functions[button_type](arch['graph_spec']).strip()
     else:
-        return arch[button_type.lower()].strip()
+        value = arch.get(button_type.lower(), '')
+        if value is not None:
+            return value.strip()
+        else:
+            return ""
 
 
 def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: bool):
@@ -462,9 +480,11 @@ def analyze_architecture_code(architecture_id: int) -> CodeSnippetAnalyzer:
 
     # Analyze each code snippet
     for field in ['state', 'nodes', 'conditions', 'tools', 'data', 'llms']:
-        code = arch.get(field, '').strip()
-        if code:
-            analyzer.add_snippet(field, code)
+        fv = arch.get(field, '')
+        if fv is not None:
+            code = fv.strip()
+            if code:
+                analyzer.add_snippet(field, code)
 
     # Generate and analyze graph code
     graph_code = gen_graph(mk_name(arch['name']), arch['graph_spec']).strip()
