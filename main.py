@@ -64,25 +64,54 @@ def load_imports():
 imports_dict = load_imports()
 architectures = load_architectures()
 
-BUTTON_TYPES = ['README', 'STATE', 'NODES', 'CONDITIONS', 'GRAPH', 'TOOLS', 'DATA', 'LLMS']
+BUTTON_TYPES = ['README', 'STATE', 'NODES', 'CONDITIONS', 'GRAPH', 'REASONING']
 
-def sanitize_filename(name: str) -> str:
+def filename_to_url(name: str) -> str:
     name = name.lower().replace(' ', '-').replace(',', '').replace('(', '').replace(')', '')
     return re.sub(r'[^a-z0-9-]', '', name)
+
+def get_grouped_architectures(architectures: dict) -> dict:
+    # First pass: collect all categories and their order
+    category_info = {}
+    for arch in architectures.values():
+        raw_category = arch.get('category', 'Uncategorized')
+        parts = raw_category.split('_', 1)
+        
+        if len(parts) == 2 and parts[0].isdigit():
+            order = int(parts[0])
+            category = parts[1]
+        else:
+            order = float('inf')  # Unordered categories go last
+            category = raw_category
+            
+        if category not in category_info:
+            category_info[category] = {
+                'order': order,
+                'architectures': []
+            }
+        category_info[category]['architectures'].append(arch)
+    
+    # Sort categories by order and create final ordered dictionary
+    sorted_categories = sorted(
+        category_info.items(),
+        key=lambda x: (x[1]['order'], x[0].lower())  # Sort by order first, then alphabetically
+    )
+    
+    # Create the final ordered dictionary
+    grouped_architectures = {}
+    for category, info in sorted_categories:
+        grouped_architectures[category] = info['architectures']
+    
+    return grouped_architectures
 
 def GraphArchitecture(selected_example: str = None):
     if selected_example is None:
         selected_example = next(iter(architectures.keys()))
 
-    # Group architectures by category (you'll need to add a 'category' field to your architectures)
-    grouped_architectures = {}
-    for arch in architectures.values():
-        category = arch.get('category', 'Uncategorized')  # Default category if none specified
-        if category not in grouped_architectures:
-            grouped_architectures[category] = []
-        grouped_architectures[category].append(arch)
+    grouped_architectures = get_grouped_architectures(architectures)
 
     return Div(
+        # Hidden field "architecture_id" identies the currently displayed architecture
         Hidden(selected_example, id="architecture_id", name="architecture_id", hx_swap="outerHTML"),
         Div(
             *[Details(
@@ -90,14 +119,13 @@ def GraphArchitecture(selected_example: str = None):
                 Div(
                     *[Div(
                         A(arch['name'],
-                          id=f"example-link-{sanitize_filename(arch['name'])}",
+                          id=f"example-link-{filename_to_url(arch['name'])}",
                           cls=f"example-link{' selected' if arch['id'] == selected_example else ''}",
                           hx_get=f"/architecture/{arch['id']}",
                           hx_target="#dsl",
                           hx_trigger="click, keyup[key=='Enter']",
                           hx_on="htmx:afterOnLoad: function() { if (typeof update_editor !== 'undefined') { setTimeout(update_editor, 100); } }",
                         ),
-                        #style="margin-bottom: 10px;"
                     ) for arch in architectures],
                     cls="category-content",
                 ),
@@ -173,13 +201,16 @@ def generate_code(architecture_id: int, button_type: str, simulation: bool) -> s
         return arch['readme'].strip()
     if button_type == 'GRAPH':
         return gen_graph(mk_name(arch['name']), arch['graph_spec']).strip()
+    elif button_type == 'REASONING':
+        # Return a message about selecting a specific reasoning component
+        return "# Select a specific reasoning component (Tools, Data, or LLMs) to view its implementation"
     elif simulation:
         simulation_functions = {
             'STATE': gen_state,
             'NODES': gen_nodes,
             'CONDITIONS': gen_conditions,
-            'TOOLS': lambda _: arch['tools'].strip(),  # Display the same content in simulation mode
-            'DATA': lambda _: arch['data'].strip(),  # Display the 'data' field content
+            'TOOLS': lambda _: arch['tools'].strip(),
+            'DATA': lambda _: arch['data'].strip(),
             'LLMS': lambda _: "# LLMs simulation not implemented"
         }
         return simulation_functions[button_type](arch['graph_spec']).strip()
@@ -198,21 +229,42 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
         'NODES': 'Nodes',
         'CONDITIONS': 'Conditions',
         'GRAPH': 'Graph',
+        'REASONING': 'Reasoning',
         'TOOLS': 'Tools',
-        'DATA': 'Data',  # Added this line
+        'DATA': 'Data',
         'LLMS': 'LLMs'
     }
     
+    # Create main buttons with special case for REASONING
+    main_buttons = [Button(button_labels[btn], id=f"{btn.lower()}_button", 
+                          hx_post=f'/get_code/{btn}', 
+                          target_id='code-generation-ui', 
+                          hx_swap='outerHTML',
+                          hx_trigger="click",
+                          hx_include="#dsl",
+                          # Add active class if this button is active OR if it's the Reasoning button and a child is active
+                          cls=f'code-generation-button{" active" if active_button == btn or (btn == "REASONING" and active_button in ["TOOLS", "DATA", "LLMS"]) else ""}')
+                   for btn in BUTTON_TYPES]
+    
+    # Create sub-buttons for Reasoning
+    sub_buttons = []
+    if active_button == 'REASONING' or active_button in ['TOOLS', 'DATA', 'LLMS']:
+        sub_buttons = [
+            Button(button_labels[btn], id=f"{btn.lower()}_button", 
+                   hx_post=f'/get_code/{btn}', 
+                   target_id='code-generation-ui', 
+                   hx_swap='outerHTML',
+                   hx_trigger="click",
+                   hx_include="#dsl",
+                   cls=f'code-generation-button sub-button{" active" if active_button == btn else ""}')
+            for btn in ['TOOLS', 'DATA', 'LLMS']
+        ]
+    
     return Div(  
-        *[Button(button_labels[btn], id=f"{btn.lower()}_button", 
-                 hx_post=f'/get_code/{btn}', 
-                 target_id='code-generation-ui', 
-                 hx_swap='outerHTML',
-                 hx_trigger="click", # why were these here??, refreshContent from:#code-generation-ui, editorReady",
-                 hx_include="#dsl",
-                 cls=f'code-generation-button{" active" if active_button == btn else ""}{" italic" if btn in ["TOOLS", "DATA", "LLMS"] else ""}')
-          for btn in BUTTON_TYPES],
+        Div(*main_buttons, cls='main-buttons'),
+        Div(*sub_buttons, cls='sub-buttons') if sub_buttons else "",
         Span(style="flex-grow: 1;"),
+        # Hidden simulation checkbox
         Label(
             Input(type="checkbox", name="simulation_code", id="simulation_code_checkbox",
                   hx_post=f'/get_code/{active_button}',
@@ -221,13 +273,15 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
                   hx_include='#dsl,#architecture_id',
                   hx_trigger="change, refreshContent from:#code-generation-ui",
                   checked=simulation,
-                  disabled=active_button == 'GRAPH'),
-            Span("Simulation Code", style="font-size: 0.8em; font-style: italic; color: #999;"),
-            style="display: flex; align-items: center;"
+                  disabled=active_button == 'GRAPH',
+                  style="display: none;"),  # Hide the checkbox
+            Span("Simulation Code", 
+                 style="display: none;"),  # Hide the label text
+            style="display: none;"  # Hide the entire label container
         ),
         id='code-generation-buttons',
         cls='toggle-buttons',
-        style="display: flex; justify-content: space-between; align-items: center;"
+        style="display: flex; flex-direction: column; gap: 10px;"
     )
 
 
@@ -328,7 +382,9 @@ def make_form(example_id: str):
                     Textarea(initial_dsl, placeholder='DSL text goes here', id="dsl", name="dsl", rows=25, cls="code-editor"),
                     cls='middle-column'
                 ),
-                GeneratedCode('README', initial_dsl, example_id, False, architectures[int(example_id)]['readme'], analysis_messages),
+                GeneratedCode('README', initial_dsl, example_id, False, 
+                             architectures[int(example_id)]['readme'], 
+                             analysis_messages),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"),
                 Script(src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/mode/simple.min.js"),
                 Script(src="/static/script.js", defer=True),
@@ -398,8 +454,8 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
     if summary:
         defined, undefined, defined_elsewhere = summary
         imported_vars = set(var for var in undefined if var in imports_dict)
-        direct_imports = sorted([f"import {var}" for var in imported_vars if not imports_dict[var]])
-        imports = sorted([f"from {imports_dict[var]} import {var} " for var in imported_vars if imports_dict[var]])
+        direct_imports = sorted([f"import {var}" for var in undefined if not imports_dict[var]])
+        imports = sorted([f"from {imports_dict[var]} import {var} " for var in undefined if imports_dict[var]])
         
         # Remove imported variables from the undefined set
         undefined = undefined - imported_vars
@@ -455,7 +511,7 @@ def get(arch_id: int, request: Request):
                     }}
                 }});
             """)
-        ), HtmxResponseHeaders(push_url=f"/graph/{sanitize_filename(arch['name'])}")
+        ), HtmxResponseHeaders(push_url=f"/graph/{filename_to_url(arch['name'])}")
     else:
         # This is a full page request
         return Main(
@@ -498,7 +554,7 @@ def analyze_architecture_code(architecture_id: int) -> CodeSnippetAnalyzer:
 @rt("/graph/{architecture_name}")
 def get(architecture_name: str, request: Request):
     # Find the architecture by name
-    arch = next((a for a in architectures.values() if sanitize_filename(a['name']) == architecture_name), None)
+    arch = next((a for a in architectures.values() if filename_to_url(a['name']) == architecture_name), None)
     if arch is None:
         raise HTTPException(status_code=404, detail="Architecture not found")
     

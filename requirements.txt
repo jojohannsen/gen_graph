@@ -1,2 +1,2 @@
 python-fasthtml==0.6.10
-langgraph-codegen==0.1.10
+langgraph-codegen==0.1.11
