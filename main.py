@@ -231,7 +231,7 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
         'GRAPH': 'Graph',
         'REASONING': 'Reasoning',
         'TOOLS': 'Tools',
-        'DATA': 'Data',
+        'DATA': 'Structured Output',
         'LLMS': 'LLMs'
     }
     
@@ -246,7 +246,7 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
                           cls=f'code-generation-button{" active" if active_button == btn or (btn == "REASONING" and active_button in ["TOOLS", "DATA", "LLMS"]) else ""}')
                    for btn in BUTTON_TYPES]
     
-    # Create sub-buttons for Reasoning
+    # Create sub-buttons for Reasoning with new order
     sub_buttons = []
     if active_button == 'REASONING' or active_button in ['TOOLS', 'DATA', 'LLMS']:
         sub_buttons = [
@@ -257,7 +257,7 @@ def CodeGenerationButtons(active_button: str, architecture_id: str, simulation: 
                    hx_trigger="click",
                    hx_include="#dsl",
                    cls=f'code-generation-button sub-button{" active" if active_button == btn else ""}')
-            for btn in ['TOOLS', 'DATA', 'LLMS']
+            for btn in ['LLMS', 'DATA', 'TOOLS']
         ]
     
     return Div(  
@@ -425,11 +425,15 @@ def CodeGenerationContent(active_button: str, architecture_id: str, simulation: 
                    cls=f'tab-content active')
     elif active_button in ['STATE', 'NODES', 'CONDITIONS', 'TOOLS', 'DATA', 'LLMS']:
         return Div(
-            Textarea(content, id=f"{active_button.lower()}-code-editor", name=f"{active_button.lower()}-code-editor", cls="code-editor"),
+            Textarea(content, 
+                     id=f"{active_button.lower()}-code-editor", 
+                     name=f"{active_button.lower()}-code-editor", 
+                     cls="code-editor",  
+                     data_language="python"),
             cls=f'tab-content active'
         )
     else:
-        return Div(Pre(Code(content), id=f"{active_button.lower()}-code"),
+        return Div(Pre(Code(content, cls='language-python'), id=f"{active_button.lower()}-code"),
                    cls=f'tab-content active')
 
 @rt("/get_code/{button_type}")
