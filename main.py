@@ -454,8 +454,8 @@ def post(button_type: str, dsl: str, architecture_id: str, simulation_code: str 
     if summary:
         defined, undefined, defined_elsewhere = summary
         imported_vars = set(var for var in undefined if var in imports_dict)
-        direct_imports = sorted([f"import {var}" for var in undefined if not imports_dict[var]])
-        imports = sorted([f"from {imports_dict[var]} import {var} " for var in undefined if imports_dict[var]])
+        direct_imports = sorted([f"import {var}" for var in undefined if not imports_dict.get(var, False)])
+        imports = sorted([f"from {imports_dict[var]} import {var} " for var in undefined if imports_dict.get(var, False)])
         
         # Remove imported variables from the undefined set
         undefined = undefined - imported_vars
